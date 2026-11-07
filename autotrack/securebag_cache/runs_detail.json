@@ -1,0 +1,178 @@
+{
+  "generated_at": "2026-11-07T21:01:09+00:00",
+  "detector_load": {
+    "seconds": 4.539,
+    "error": null
+  },
+  "import_error": null,
+  "runs": {
+    "test2": {
+      "forward": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.225,
+          "flag_reason": "overall low similarity",
+          "breakdown": {
+            "color_score": 0.3267,
+            "orb_score": 0.0724,
+            "orb_candidate_ratio": 0.2105,
+            "texture_score": 0.9803,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 2.239,
+        "error": null
+      },
+      "reverse": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.2171,
+          "flag_reason": "overall low similarity",
+          "breakdown": {
+            "color_score": 0.3267,
+            "orb_score": 0.0526,
+            "orb_candidate_ratio": 0.1414,
+            "texture_score": 0.9803,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 1.015,
+        "error": null
+      },
+      "repeat": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.225,
+          "flag_reason": "overall low similarity",
+          "breakdown": {
+            "color_score": 0.3267,
+            "orb_score": 0.0724,
+            "orb_candidate_ratio": 0.2105,
+            "texture_score": 0.9803,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 1.051,
+        "error": null
+      }
+    },
+    "test3": {
+      "forward": {
+        "ok": true,
+        "result": {
+          "verdict": "pass",
+          "combined_score": 0.3927,
+          "flag_reason": null,
+          "breakdown": {
+            "color_score": 0.6131,
+            "orb_score": 0.062,
+            "orb_candidate_ratio": 0.202,
+            "texture_score": 0.7381,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.623,
+        "error": null
+      },
+      "reverse": {
+        "ok": true,
+        "result": {
+          "verdict": "pass",
+          "combined_score": 0.3887,
+          "flag_reason": null,
+          "breakdown": {
+            "color_score": 0.6131,
+            "orb_score": 0.052,
+            "orb_candidate_ratio": 0.172,
+            "texture_score": 0.7381,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.601,
+        "error": null
+      },
+      "repeat": {
+        "ok": true,
+        "result": {
+          "verdict": "pass",
+          "combined_score": 0.3927,
+          "flag_reason": null,
+          "breakdown": {
+            "color_score": 0.6131,
+            "orb_score": 0.062,
+            "orb_candidate_ratio": 0.202,
+            "texture_score": 0.7381,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.586,
+        "error": null
+      }
+    },
+    "test4": {
+      "forward": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.5157,
+          "flag_reason": "surface texture mismatch",
+          "breakdown": {
+            "color_score": 0.7941,
+            "orb_score": 0.098,
+            "orb_candidate_ratio": 0.206,
+            "texture_score": 0.4981,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.595,
+        "error": null
+      },
+      "reverse": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.4973,
+          "flag_reason": "surface texture mismatch",
+          "breakdown": {
+            "color_score": 0.7941,
+            "orb_score": 0.052,
+            "orb_candidate_ratio": 0.166,
+            "texture_score": 0.4981,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.603,
+        "error": null
+      },
+      "repeat": {
+        "ok": true,
+        "result": {
+          "verdict": "review",
+          "combined_score": 0.5157,
+          "flag_reason": "surface texture mismatch",
+          "breakdown": {
+            "color_score": 0.7941,
+            "orb_score": 0.098,
+            "orb_candidate_ratio": 0.206,
+            "texture_score": 0.4981,
+            "color_weight": 0.6,
+            "orb_weight": 0.4
+          }
+        },
+        "seconds": 0.603,
+        "error": null
+      }
+    }
+  }
+}

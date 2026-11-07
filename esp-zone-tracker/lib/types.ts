@@ -65,4 +65,5 @@ export type TrackerState = {
   alert: boolean;
   status: Status;
   outsideSince: number | null;
+  storage: "redis" | "memory";
 };

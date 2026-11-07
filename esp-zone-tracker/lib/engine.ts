@@ -17,7 +17,7 @@ export function defaultConfig(): Config {
     centralId: null,
     zone: [],
     alertDelayMs: 1500,
-    smoothingS: 4,
+    smoothingS: 2,
     armed: true,
     calibPoint: null,
     updatedAt: 0,
@@ -97,7 +97,10 @@ export async function computeState(
     const r = snap.readings[id];
     const ageMs = r ? now - r.t : null;
     const online = ageMs != null && ageMs < FRESH_MS;
-    const seesTag = online && r!.rssi != null;
+    // Prefer the laptop's raw 1 s median over its Kalman-smoothed value: the
+    // server smooths the *position* anyway, and filtering twice adds seconds of lag.
+    const signal = online ? r!.raw ?? r!.rssi : null;
+    const seesTag = signal != null;
     return {
       id,
       x: a.x,
@@ -106,10 +109,10 @@ export async function computeState(
       isCentral: config.centralId === id,
       online,
       seesTag,
-      rssi: seesTag ? r!.rssi : null,
+      rssi: signal,
       raw: online ? r!.raw : null,
       samples: online ? r!.samples : 0,
-      distance: seesTag ? rssiToDistance(r!.rssi!, a.txPower, n) : null,
+      distance: signal != null ? rssiToDistance(signal, a.txPower, n) : null,
       ageMs,
     };
   });
@@ -123,8 +126,8 @@ export async function computeState(
   const rawPosition = sol?.p ?? null;
 
   // Time-based exponential smoothing, so it behaves the same however often we're polled.
-  // Small wobbles (inside the uncertainty radius) are damped extra hard; real moves
-  // (well outside it) are followed at the normal rate.
+  // Tiny wobbles (well inside the uncertainty radius) are damped a little extra;
+  // anything bigger is followed at the normal rate so real movement isn't delayed.
   const prev = snap.runtime;
   let position: Point | null = null;
   if (rawPosition) {
@@ -133,7 +136,7 @@ export async function computeState(
       const dt = Math.max(0, now - prev.posT) / 1000;
       const jump = Math.hypot(rawPosition.x - prev.pos.x, rawPosition.y - prev.pos.y);
       const err = sol?.errorM ?? 1;
-      const damp = Math.min(1, Math.max(0.25, jump / err));
+      const damp = Math.min(1, Math.max(0.6, jump / (0.5 * err)));
       const k = (1 - Math.exp(-dt / tau)) * damp;
       position = {
         x: prev.pos.x + k * (rawPosition.x - prev.pos.x),

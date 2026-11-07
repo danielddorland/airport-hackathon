@@ -40,6 +40,7 @@ export async function PUT(req: Request) {
   if (finite(patch.pathLossN)) c.pathLossN = clamp(patch.pathLossN, 1.5, 5);
   if (finite(patch.defaultTxPower)) c.defaultTxPower = clamp(patch.defaultTxPower, -100, 0);
   if (finite(patch.alertDelayMs)) c.alertDelayMs = clamp(patch.alertDelayMs, 0, 60000);
+  if (finite(patch.smoothingS)) c.smoothingS = clamp(patch.smoothingS, 0, 20);
   if (typeof patch.armed === "boolean") c.armed = patch.armed;
   if (patch.centralId === null || typeof patch.centralId === "string") c.centralId = patch.centralId as string | null;
   if (patch.calibPoint === null || isPoint(patch.calibPoint)) c.calibPoint = patch.calibPoint as Point | null;

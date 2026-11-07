@@ -4,8 +4,6 @@ import type { AnchorStatus, Config, Point, Runtime, Status, TrackerState } from 
 
 /** A laptop counts as online if it reported within this window. */
 export const FRESH_MS = 5000;
-/** Time constant of the position smoothing filter. */
-const POS_TAU_S = 1.5;
 
 export function defaultConfig(): Config {
   return {
@@ -16,6 +14,7 @@ export function defaultConfig(): Config {
     centralId: null,
     zone: [],
     alertDelayMs: 1500,
+    smoothingS: 4,
     armed: true,
     calibPoint: null,
     updatedAt: 0,
@@ -121,12 +120,18 @@ export async function computeState(
   const rawPosition = sol?.p ?? null;
 
   // Time-based exponential smoothing, so it behaves the same however often we're polled.
+  // Small wobbles (inside the uncertainty radius) are damped extra hard; real moves
+  // (well outside it) are followed at the normal rate.
   const prev = snap.runtime;
   let position: Point | null = null;
   if (rawPosition) {
-    if (prev?.pos && now - prev.posT < FRESH_MS) {
+    const tau = Math.max(0, config.smoothingS);
+    if (tau > 0 && prev?.pos && now - prev.posT < FRESH_MS) {
       const dt = Math.max(0, now - prev.posT) / 1000;
-      const k = 1 - Math.exp(-dt / POS_TAU_S);
+      const jump = Math.hypot(rawPosition.x - prev.pos.x, rawPosition.y - prev.pos.y);
+      const err = sol?.errorM ?? 1;
+      const damp = Math.min(1, Math.max(0.25, jump / err));
+      const k = (1 - Math.exp(-dt / tau)) * damp;
       position = {
         x: prev.pos.x + k * (rawPosition.x - prev.pos.x),
         y: prev.pos.y + k * (rawPosition.y - prev.pos.y),

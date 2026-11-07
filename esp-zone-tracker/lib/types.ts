@@ -14,6 +14,7 @@ export type Config = {
   centralId: string | null;
   zone: Point[]; // safe-zone polygon, metres
   alertDelayMs: number; // must be outside this long before alerting
+  smoothingS: number; // position smoothing time constant (seconds); higher = steadier but slower
   armed: boolean;
   calibPoint: Point | null; // where the ESP sits during calibration
   updatedAt: number;

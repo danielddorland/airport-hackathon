@@ -2,8 +2,11 @@ import { pointInPolygon, rssiToDistance, solvePosition } from "./positioning";
 import type { Store } from "./store";
 import type { AnchorStatus, Config, Point, Runtime, Status, TrackerState } from "./types";
 
-/** A laptop counts as online if it reported within this window. */
-export const FRESH_MS = 5000;
+/**
+ * A laptop counts as online if it reported within this window. Generous because
+ * Wi-Fi hiccups and slow requests regularly delay a 1 s report by a few seconds.
+ */
+export const FRESH_MS = 10000;
 
 export function defaultConfig(): Config {
   return {

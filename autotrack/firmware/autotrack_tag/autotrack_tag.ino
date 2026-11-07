@@ -57,7 +57,15 @@
 #include <BLEUtils.h>
 #include <BLEAdvertising.h>
 #include <esp_bt.h>
+// esp_gap_ble_api.h only exists when the ESP32 board package uses the "Bluedroid"
+// Bluetooth stack. Newer packages (3.3+) may use "NimBLE" instead, which doesn't have it.
+// We only need it for a rarely used backup path, so include it only if it's there.
+#if __has_include(<esp_gap_ble_api.h>)
 #include <esp_gap_ble_api.h>
+#define HAVE_BLUEDROID_GAP 1
+#else
+#define HAVE_BLUEDROID_GAP 0
+#endif
 #include <Preferences.h>
 #include "mbedtls/md.h"
 
@@ -235,7 +243,7 @@ static void updateAdvertisement(uint32_t counter) {
   memcpy(mfg + 2, payload, sizeof(payload));
 
   BLEAdvertisementData advData;
-  advData.setFlags(ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
+  advData.setFlags(0x06);  // 0x02 "general discoverable" + 0x04 "no classic Bluetooth" (works on both stacks)
   // The data contains zero bytes, so we must pass the length explicitly.
   // Core 3.x uses Arduino String here, core 2.x uses std::string.
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -250,6 +258,15 @@ static void updateAdvertisement(uint32_t counter) {
   // byte, send the exact raw bytes to the Bluetooth stack ourselves.
   if (advData.getPayload().length() != 24) {
     static bool warned = false;
+#if !HAVE_BLUEDROID_GAP
+    if (!warned) {
+      warned = true;
+      Serial.printf("[ble] WARNING: library built a %u-byte advertisement instead of 24. "
+                    "The laptop may not recognise this tag - tell us this message.\n",
+                    (unsigned)advData.getPayload().length());
+    }
+  }
+#else
     if (!warned) {
       warned = true;
       Serial.printf("[ble] note: library built %u-byte advertisement, using raw bytes instead\n",
@@ -263,6 +280,7 @@ static void updateAdvertisement(uint32_t counter) {
     raw[20] = 3; raw[21] = 0x09; raw[22] = 'A'; raw[23] = 'T';  // complete name "AT"
     esp_ble_gap_config_adv_data_raw(raw, sizeof(raw));
   }
+#endif
 }
 
 // ============================================================ command handling

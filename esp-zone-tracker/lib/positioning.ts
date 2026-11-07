@@ -30,12 +30,15 @@ export function solvePosition(
   if (obs.length < 3) return null;
   const margin = 0.5;
 
+  // Huber loss: squared for normal noise, linear beyond HUBER_DB so one laptop
+  // whose signal is blocked (a person in the way, a lid) can't drag the fix far.
+  const HUBER_DB = 4;
   const cost = (x: number, y: number) => {
     let c = 0;
     for (const o of obs) {
       const d = Math.hypot(x - o.x, y - o.y);
-      const e = predictRssi(d, o.txPower, n) - o.rssi;
-      c += e * e;
+      const e = Math.abs(predictRssi(d, o.txPower, n) - o.rssi);
+      c += e <= HUBER_DB ? e * e : HUBER_DB * (2 * e - HUBER_DB);
     }
     return c;
   };

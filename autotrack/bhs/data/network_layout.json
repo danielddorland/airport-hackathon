@@ -1,0 +1,105 @@
+{
+  "meta": {
+    "description": "Airport baggage conveyor network — two-terminal layout",
+    "total_nodes": 28,
+    "zones": ["intake", "junction", "spine", "gate"],
+    "cost_unit": "ticks",
+    "notes": "base_cost is static. effective_cost is computed at runtime by the evaluator (base_cost + congestion surcharge). wear_threshold is cumulative bag count at which the edge becomes jam-eligible."
+  },
+
+  "nodes": [
+    { "id": "IA1", "type": "intake",   "terminal": "A",  "label": "Intake A1" },
+    { "id": "IA2", "type": "intake",   "terminal": "A",  "label": "Intake A2" },
+    { "id": "IB1", "type": "intake",   "terminal": "B",  "label": "Intake B1" },
+    { "id": "IB2", "type": "intake",   "terminal": "B",  "label": "Intake B2" },
+
+    { "id": "JA1", "type": "junction", "terminal": "A",  "label": "Junction A1" },
+    { "id": "JA2", "type": "junction", "terminal": "A",  "label": "Junction A2" },
+    { "id": "JA3", "type": "junction", "terminal": "A",  "label": "Junction A3 (loop entry)" },
+    { "id": "JA4", "type": "junction", "terminal": "A",  "label": "Junction A4" },
+    { "id": "JA5", "type": "junction", "terminal": "A",  "label": "Junction A5 (loop trap)" },
+
+    { "id": "JB1", "type": "junction", "terminal": "B",  "label": "Junction B1" },
+    { "id": "JB2", "type": "junction", "terminal": "B",  "label": "Junction B2" },
+    { "id": "JB3", "type": "junction", "terminal": "B",  "label": "Junction B3 (loop entry)" },
+    { "id": "JB4", "type": "junction", "terminal": "B",  "label": "Junction B4" },
+    { "id": "JB5", "type": "junction", "terminal": "B",  "label": "Junction B5 (loop trap)" },
+
+    { "id": "S1",  "type": "spine",    "terminal": "A",  "label": "Spine 1 — A anchor",        "is_chokepoint": false },
+    { "id": "S2",  "type": "spine",    "terminal": "A",  "label": "Spine 2 — chokepoint A",    "is_chokepoint": true  },
+    { "id": "S3",  "type": "spine",    "terminal": "AB", "label": "Spine 3 — central",          "is_chokepoint": false },
+    { "id": "S4",  "type": "spine",    "terminal": "B",  "label": "Spine 4 — chokepoint B",    "is_chokepoint": true  },
+    { "id": "S5",  "type": "spine",    "terminal": "B",  "label": "Spine 5 — B anchor",        "is_chokepoint": false },
+    { "id": "S6",  "type": "spine",    "terminal": "AB", "label": "Spine 6 — detour midpoint", "is_chokepoint": false },
+
+    { "id": "GA1", "type": "gate",     "terminal": "A",  "label": "Gate A1 (outermost)" },
+    { "id": "GA2", "type": "gate",     "terminal": "A",  "label": "Gate A2" },
+    { "id": "GA3", "type": "gate",     "terminal": "A",  "label": "Gate A3" },
+    { "id": "GA4", "type": "gate",     "terminal": "A",  "label": "Gate A4 (innermost)" },
+
+    { "id": "GB1", "type": "gate",     "terminal": "B",  "label": "Gate B1 (innermost)" },
+    { "id": "GB2", "type": "gate",     "terminal": "B",  "label": "Gate B2" },
+    { "id": "GB3", "type": "gate",     "terminal": "B",  "label": "Gate B3" },
+    { "id": "GB4", "type": "gate",     "terminal": "B",  "label": "Gate B4 (outermost)" }
+  ],
+
+  "edges": [
+    { "id": "e_IA1_JA1", "from": "IA1", "to": "JA1", "bidirectional": false, "base_cost": 4, "wear_threshold": 180, "type": "intake_feed" },
+    { "id": "e_IA1_JA2", "from": "IA1", "to": "JA2", "bidirectional": false, "base_cost": 5, "wear_threshold": 160, "type": "intake_feed" },
+    { "id": "e_IA2_JA3", "from": "IA2", "to": "JA3", "bidirectional": false, "base_cost": 4, "wear_threshold": 170, "type": "intake_feed" },
+    { "id": "e_IA2_JA4", "from": "IA2", "to": "JA4", "bidirectional": false, "base_cost": 5, "wear_threshold": 165, "type": "intake_feed" },
+
+    { "id": "e_IB1_JB1", "from": "IB1", "to": "JB1", "bidirectional": false, "base_cost": 4, "wear_threshold": 175, "type": "intake_feed" },
+    { "id": "e_IB1_JB2", "from": "IB1", "to": "JB2", "bidirectional": false, "base_cost": 5, "wear_threshold": 155, "type": "intake_feed" },
+    { "id": "e_IB2_JB3", "from": "IB2", "to": "JB3", "bidirectional": false, "base_cost": 4, "wear_threshold": 185, "type": "intake_feed" },
+    { "id": "e_IB2_JB4", "from": "IB2", "to": "JB4", "bidirectional": false, "base_cost": 5, "wear_threshold": 165, "type": "intake_feed" },
+
+    { "id": "e_JA1_JA2", "from": "JA1", "to": "JA2", "bidirectional": false, "base_cost": 3, "wear_threshold": 130, "type": "junction_internal" },
+    { "id": "e_JA2_JA3", "from": "JA2", "to": "JA3", "bidirectional": false, "base_cost": 4, "wear_threshold": 120, "type": "junction_internal" },
+    { "id": "e_JA3_JA4", "from": "JA3", "to": "JA4", "bidirectional": false, "base_cost": 3, "wear_threshold": 110, "type": "junction_internal" },
+    { "id": "e_JA3_JA5", "from": "JA3", "to": "JA5", "bidirectional": false, "base_cost": 3, "wear_threshold": 100, "type": "loop_backedge" },
+    { "id": "e_JA5_JA2", "from": "JA5", "to": "JA2", "bidirectional": false, "base_cost": 4, "wear_threshold": 90,  "type": "loop_backedge" },
+
+    { "id": "e_JB1_JB2", "from": "JB1", "to": "JB2", "bidirectional": false, "base_cost": 3, "wear_threshold": 130, "type": "junction_internal" },
+    { "id": "e_JB1_JB3", "from": "JB1", "to": "JB3", "bidirectional": false, "base_cost": 4, "wear_threshold": 120, "type": "junction_mesh" },
+    { "id": "e_JB4_JB3", "from": "JB4", "to": "JB3", "bidirectional": false, "base_cost": 3, "wear_threshold": 125, "type": "junction_mesh" },
+    { "id": "e_JB2_JB5", "from": "JB2", "to": "JB5", "bidirectional": false, "base_cost": 3, "wear_threshold": 100, "type": "funnel_converge" },
+    { "id": "e_JB3_JB5", "from": "JB3", "to": "JB5", "bidirectional": false, "base_cost": 3, "wear_threshold": 95,  "type": "funnel_converge" },
+    { "id": "e_JB4_JB5", "from": "JB4", "to": "JB5", "bidirectional": false, "base_cost": 4, "wear_threshold": 105, "type": "funnel_converge" },
+
+    { "id": "e_JA1_S1",  "from": "JA1", "to": "S1",  "bidirectional": false, "base_cost": 3, "wear_threshold": 130, "type": "shortcut" },
+    { "id": "e_JA2_S2",  "from": "JA2", "to": "S2",  "bidirectional": false, "base_cost": 3, "wear_threshold": 120, "type": "shortcut" },
+    { "id": "e_JA3_S3",  "from": "JA3", "to": "S3",  "bidirectional": false, "base_cost": 5, "wear_threshold": 140, "type": "junction_to_spine" },
+    { "id": "e_JA4_S3",  "from": "JA4", "to": "S3",  "bidirectional": false, "base_cost": 4, "wear_threshold": 135, "type": "junction_to_spine" },
+    { "id": "e_JA5_S2",  "from": "JA5", "to": "S2",  "bidirectional": false, "base_cost": 4, "wear_threshold": 115, "type": "loop_exit" },
+
+    { "id": "e_JB1_S4",  "from": "JB1", "to": "S4",  "bidirectional": false, "base_cost": 3, "wear_threshold": 135, "type": "shortcut" },
+    { "id": "e_JB2_S4",  "from": "JB2", "to": "S4",  "bidirectional": false, "base_cost": 3, "wear_threshold": 125, "type": "shortcut" },
+    { "id": "e_JB3_S5",  "from": "JB3", "to": "S5",  "bidirectional": false, "base_cost": 5, "wear_threshold": 140, "type": "junction_to_spine" },
+    { "id": "e_JB4_S6",  "from": "JB4", "to": "S6",  "bidirectional": false, "base_cost": 4, "wear_threshold": 135, "type": "junction_to_spine" },
+    { "id": "e_JB5_S4",  "from": "JB5", "to": "S4",  "bidirectional": false, "base_cost": 4, "wear_threshold": 110, "type": "loop_exit" },
+
+    { "id": "e_JA1_JB1", "from": "JA1", "to": "JB1", "bidirectional": true,  "base_cost": 6, "wear_threshold": 155, "type": "cross_terminal" },
+
+    { "id": "e_S1_S2",   "from": "S1",  "to": "S2",  "bidirectional": false, "base_cost": 4, "wear_threshold": 250, "type": "spine_trunk" },
+    { "id": "e_S2_S3",   "from": "S2",  "to": "S3",  "bidirectional": true,  "base_cost": 4, "wear_threshold": 240, "type": "spine_trunk" },
+    { "id": "e_S3_S4",   "from": "S3",  "to": "S4",  "bidirectional": false, "base_cost": 5, "wear_threshold": 230, "type": "spine_trunk" },
+    { "id": "e_S4_S5",   "from": "S4",  "to": "S5",  "bidirectional": false, "base_cost": 4, "wear_threshold": 245, "type": "spine_trunk" },
+
+    { "id": "e_S1_S6",   "from": "S1",  "to": "S6",  "bidirectional": true,  "base_cost": 7, "wear_threshold": 200, "type": "detour_belt" },
+    { "id": "e_S6_S5",   "from": "S6",  "to": "S5",  "bidirectional": true,  "base_cost": 8, "wear_threshold": 195, "type": "detour_belt" },
+
+    { "id": "e_S1_GA1",  "from": "S1",  "to": "GA1", "bidirectional": false, "base_cost": 4, "wear_threshold": 150, "type": "gate_feed" },
+    { "id": "e_S1_GA2",  "from": "S1",  "to": "GA2", "bidirectional": false, "base_cost": 5, "wear_threshold": 160, "type": "gate_feed" },
+    { "id": "e_S2_GA2",  "from": "S2",  "to": "GA2", "bidirectional": false, "base_cost": 3, "wear_threshold": 140, "type": "gate_feed" },
+    { "id": "e_S2_GA3",  "from": "S2",  "to": "GA3", "bidirectional": false, "base_cost": 4, "wear_threshold": 135, "type": "gate_feed" },
+    { "id": "e_S3_GA3",  "from": "S3",  "to": "GA3", "bidirectional": false, "base_cost": 6, "wear_threshold": 145, "type": "gate_feed" },
+    { "id": "e_S3_GA4",  "from": "S3",  "to": "GA4", "bidirectional": false, "base_cost": 4, "wear_threshold": 150, "type": "gate_feed" },
+    { "id": "e_S4_GB1",  "from": "S4",  "to": "GB1", "bidirectional": false, "base_cost": 4, "wear_threshold": 150, "type": "gate_feed" },
+    { "id": "e_S4_GB2",  "from": "S4",  "to": "GB2", "bidirectional": false, "base_cost": 3, "wear_threshold": 140, "type": "gate_feed" },
+    { "id": "e_S5_GB2",  "from": "S5",  "to": "GB2", "bidirectional": false, "base_cost": 6, "wear_threshold": 145, "type": "gate_feed" },
+    { "id": "e_S5_GB3",  "from": "S5",  "to": "GB3", "bidirectional": false, "base_cost": 5, "wear_threshold": 155, "type": "gate_feed" },
+    { "id": "e_S6_GB3",  "from": "S6",  "to": "GB3", "bidirectional": false, "base_cost": 4, "wear_threshold": 135, "type": "gate_feed" },
+    { "id": "e_S6_GB4",  "from": "S6",  "to": "GB4", "bidirectional": false, "base_cost": 4, "wear_threshold": 145, "type": "gate_feed" }
+  ]
+}

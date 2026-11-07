@@ -1,0 +1,5 @@
+# AutoTrack - install with:  .venv\Scripts\python -m pip install -r requirements.txt
+fastapi==0.162.2
+uvicorn==0.54.0
+# Only needed for --mode real (laptop Bluetooth + ESP32 tag). Sim mode works without it.
+bleak==3.0.2

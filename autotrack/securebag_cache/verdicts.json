@@ -1,0 +1,108 @@
+{
+  "generated_at": "2026-11-07T21:01:09+00:00",
+  "python": "3.14.0",
+  "torch": "2.15.0+cpu",
+  "source": "IdeasClinicUWaterloo F26 repo, mishandled-baggage-subproblem/securebag/bag_compare.py verify_bags()",
+  "pairs": {
+    "test2": {
+      "status": "ok",
+      "verdict": "review",
+      "scores": {
+        "combined_score": 0.225,
+        "color_score": 0.3267,
+        "orb_score": 0.0724,
+        "orb_candidate_ratio": 0.2105,
+        "texture_score": 0.9803,
+        "color_weight": 0.6,
+        "orb_weight": 0.4
+      },
+      "raw": {
+        "verdict": "review",
+        "combined_score": 0.225,
+        "flag_reason": "overall low similarity",
+        "breakdown": {
+          "color_score": 0.3267,
+          "orb_score": 0.0724,
+          "orb_candidate_ratio": 0.2105,
+          "texture_score": 0.9803,
+          "color_weight": 0.6,
+          "orb_weight": 0.4
+        }
+      },
+      "reverse_verdict": "review",
+      "repeat_verdict": "review",
+      "seconds": 2.239,
+      "image_a": "bags/test2_a.png",
+      "image_b": "bags/test2_b.png",
+      "description": "two different black suitcases that look alike",
+      "error": null
+    },
+    "test3": {
+      "status": "ok",
+      "verdict": "pass",
+      "scores": {
+        "combined_score": 0.3927,
+        "color_score": 0.6131,
+        "orb_score": 0.062,
+        "orb_candidate_ratio": 0.202,
+        "texture_score": 0.7381,
+        "color_weight": 0.6,
+        "orb_weight": 0.4
+      },
+      "raw": {
+        "verdict": "pass",
+        "combined_score": 0.3927,
+        "flag_reason": null,
+        "breakdown": {
+          "color_score": 0.6131,
+          "orb_score": 0.062,
+          "orb_candidate_ratio": 0.202,
+          "texture_score": 0.7381,
+          "color_weight": 0.6,
+          "orb_weight": 0.4
+        }
+      },
+      "reverse_verdict": "pass",
+      "repeat_verdict": "pass",
+      "seconds": 0.623,
+      "image_a": "bags/test3_a.png",
+      "image_b": "bags/test3_b.png",
+      "description": "same leopard-print bag in two settings",
+      "error": null
+    },
+    "test4": {
+      "status": "ok",
+      "verdict": "review",
+      "scores": {
+        "combined_score": 0.5157,
+        "color_score": 0.7941,
+        "orb_score": 0.098,
+        "orb_candidate_ratio": 0.206,
+        "texture_score": 0.4981,
+        "color_weight": 0.6,
+        "orb_weight": 0.4
+      },
+      "raw": {
+        "verdict": "review",
+        "combined_score": 0.5157,
+        "flag_reason": "surface texture mismatch",
+        "breakdown": {
+          "color_score": 0.7941,
+          "orb_score": 0.098,
+          "orb_candidate_ratio": 0.206,
+          "texture_score": 0.4981,
+          "color_weight": 0.6,
+          "orb_weight": 0.4
+        }
+      },
+      "reverse_verdict": "review",
+      "repeat_verdict": "review",
+      "seconds": 0.595,
+      "image_a": "bags/test4_a.png",
+      "image_b": "bags/test4_b.png",
+      "description": "two grey same-brand bags differing only in shell texture (tag-swap case)",
+      "error": null
+    }
+  },
+  "mapping_note": "No mapping needed: VerifyResult['verdict'] already uses 'pass' | 'review' | 'flag' and is stored verbatim. From bag_compare.verify_bags(): combined = ORB_WEIGHT * orb + COLOR_WEIGHT * color (ORB_WEIGHT = 0.4, COLOR_WEIGHT = 0.6); 'if combined >= PASS_THRESHOLD: verdict = \"pass\" / elif combined >= FLAG_THRESHOLD: verdict = \"review\" / else: verdict = \"flag\"' (PASS_THRESHOLD = 0.35, FLAG_THRESHOLD = 0.15). Then 'if verdict == \"pass\" and (color_mismatch or orb_mismatch or texture_mismatch): verdict = \"review\"' where color_mismatch = color < FLAG_THRESHOLD, orb_mismatch = orb < FLAG_THRESHOLD and orb_candidate_ratio >= ORB_CONFIDENCE_RATIO (0.35), texture_mismatch = texture < TEXTURE_MISMATCH_THRESHOLD (0.6). Note the texture veto can only demote pass->review, never produce 'flag'. Inputs were encoded like SecureBag's Flask routes: PIL convert('RGB') -> JPEG -> raw base64 (no data-URL prefix); argument order = (image_a as check-in, image_b as scan)."
+}

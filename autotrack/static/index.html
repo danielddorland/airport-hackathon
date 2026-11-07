@@ -154,7 +154,7 @@
         <div><span>State</span><b id="ltstate">--</b></div>
       </div>
       <div class="row" style="margin:12px 0">
-        <label>Too far when weaker than <input type="number" id="ltthr" value="-50" step="1" style="width:80px"> dBm</label>
+        <label>Too far when weaker than <input type="number" id="ltthr" value="-65" step="1" style="width:80px"> dBm</label>
         <button class="primary" onclick="beep(3)">Test beep</button>
         <button onclick="beep(0)">Stop</button>
       </div>
@@ -529,7 +529,7 @@ function renderLiveTag(d) {
   $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#ED1C24";
   $("lthelp").innerHTML = !d.real
     ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
-    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): about -20 to -30 dBm is very close, below ${d.threshold_dbm} dBm is too far, and the ESP32 flashes red.
+    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): about -40 dBm is touching, -60 dBm is about 1 m, and below ${d.threshold_dbm} dBm the tag is too far and flashes red.
        Distance is a rough estimate from signal strength (bodies, walls and how you hold the board change it a lot), so the blue band shows the likely range.`
     + (d.error ? `<br><span style="color:var(--red)">${esc(d.error)}</span>` : "");
   if (document.activeElement !== $("ltthr")) $("ltthr").value = d.threshold_dbm;

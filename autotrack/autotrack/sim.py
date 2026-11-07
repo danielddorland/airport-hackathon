@@ -27,7 +27,10 @@ from .world import BagTruth, World
 
 LIVE_TAG = "TAG-0001"          # the real ESP32
 LIVE_RECEIVER = "R-GA4"        # the laptop's Bluetooth = the BLE receiver at belt loader GA4
-NEAR_LOADER_DBM = -65          # live tag counts as "at the loader portal" above this smoothed RSSI
+NEAR_LOADER_DBM = -33          # live tag counts as "at the loader portal" above this smoothed RSSI.
+                               # Measured on Alex's laptop + the team's ESP32-S3 (Nov 7):
+                               # ~30 cm = -24 dBm, ~3 m = -40 to -49 dBm. Re-measure with
+                               # tools/check_ble.py if you use a different laptop.
 RECHARGE_S = 300
 TAG_POOL = 300
 # What a checkpoint saves (everything that changes while the hour runs)
@@ -144,6 +147,14 @@ class Simulation:
             self.tracker.bags[old].note = "Live demo bag replaced by a new check-in."
             self._remove_tag(old, pulled=True)
         self._clear_live()
+        # Clear loader GA4 for the live demo: simulated staff deal with any simulated bag that is
+        # holding that belt (e.g. the built-in WRONG AIRCRAFT scenario happens at GA4 around 14:23).
+        for a in list(self.tracker.alerts.values()):
+            if a["active"] and (a["gate"] == "GA4" or self.tracker.loaders["GA4"]["bag"] == a["bag"]):
+                act = {"MISROUTED": "pull", "WRONG AIRCRAFT": "pull", "TAG NOT RETURNED": "recover",
+                       "IDENTITY REVIEW": "security", "IDENTITY FLAG": "security"}.get(a["status"])
+                if act:
+                    self.action(a["bag"], act, who="staff (simulated)")
         path = self.layout.shortest_path("IA1", "GA4")
         hist, tt = [], t
         for i, n in enumerate(path):
@@ -203,8 +214,8 @@ class Simulation:
             if p["state"] == "makeup":
                 ready = (t >= b.loader_tick) if bid != live_id else self.live_near
                 ld = tr.loaders[b.dest]
-                if ready and ld["paused"] and ld["bag"] not in (None, bid):
-                    ready = False  # belt is paused for another bag: wait
+                if ready and ld["paused"] and ld["bag"] not in (None, bid) and bid != live_id:
+                    ready = False  # belt is paused for another bag: wait (the live demo bag never waits)
                 if ready:
                     plate = self.world.by_id[b.plate_at_loader].plate if b.plate_at_loader else b.plate
                     scale = round(b.weight + self.rng.gauss(0, 0.3), 1)

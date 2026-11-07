@@ -280,6 +280,7 @@ def live_checkin(body: dict):
     with lock:
         bid = sim().live_checkin(gate)
     state["follow"] = bid
+    state["playing"] = True  # a paused clock would freeze the live bag
     if CONFIG["mode"] == "real":
         state["speed"] = 1.0  # real tag = real time
     return {"ok": True, "bag": bid}

@@ -107,6 +107,10 @@
   .ltstats div { box-shadow: var(--inset); border-radius: 12px; padding: 10px; text-align: center; }
   .ltstats span { display: block; font-size: 12px; color: var(--muted); }
   .ltstats b { font-family: var(--mono); font-size: 26px; }
+  .ltcal { box-shadow: var(--inset); border-radius: 12px; padding: 10px 12px; margin: 4px 0 12px; }
+  .ltcal summary { cursor: pointer; }
+  .ltcal table { border-collapse: collapse; font-size: 13px; }
+  .ltcal td, .ltcal th { padding: 3px 10px 3px 0; text-align: left; }
   #lttag { transition: transform 300ms linear; }
   #lttag.flash circle { animation: ltblink .35s infinite alternate; }
   @keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
@@ -153,11 +157,34 @@
         <div><span>Distance (rough)</span><b id="ltdist">--</b></div>
         <div><span>State</span><b id="ltstate">--</b></div>
       </div>
-      <div class="row" style="margin:12px 0">
-        <label>Too far when weaker than <input type="number" id="ltthr" value="-65" step="1" style="width:80px"> dBm</label>
+      <div class="row" style="margin:12px 0 4px">
+        <label>This laptop: <select id="ltlaptop"></select></label>
+        <input id="ltnewname" placeholder="New laptop (name)" size="16">
+        <button class="small" onclick="addLaptop()">Add</button>
+        <span class="note" id="ltcurve"></span>
+      </div>
+      <div class="row" style="margin:8px 0 12px">
+        <label>Too far beyond <input type="number" id="ltthrm" value="1.9" step="0.1" min="0.2" max="15" style="width:70px"> m</label>
+        <span class="note" id="ltthrdbm"></span>
         <button class="primary" onclick="beep(3)">Test beep</button>
         <button onclick="beep(0)">Stop</button>
       </div>
+      <details id="ltcal" class="ltcal">
+        <summary><b>Calibrate this laptop</b> <span class="note" id="ltcalsum"></span></summary>
+        <p class="note" style="margin:6px 0">Every laptop hears the ESP differently, so each one needs its own numbers.
+          Put the ESP at a <b>measured</b> distance from this laptop (tape measure, same height as the laptop, nobody in between),
+          keep it still, and press <b>Measure</b>. Do it at 2&ndash;3 distances, e.g. 0.3 m, 1 m and 3 m.
+          Measuring the same distance again replaces the old reading.</p>
+        <div class="row">
+          <label>ESP is <select id="ltcald">
+            <option value="0.3">0.3</option><option value="0.5">0.5</option><option value="1" selected>1</option>
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option></select> m away</label>
+          <button class="primary" id="ltcalbtn" onclick="measurePoint()">Measure (8 s)</button>
+          <button class="small" onclick="clearPoints()">Clear this laptop's measurements</button>
+          <span class="note" id="ltcalmsg"></span>
+        </div>
+        <div id="ltpoints" style="margin-top:8px"></div>
+      </details>
       <h3 style="margin:6px 0">Signal, last 60 seconds</h3>
       <svg id="ltspark" viewBox="0 0 1000 140"></svg>
       <h3 style="margin:10px 0 4px">What happened</h3>
@@ -307,7 +334,8 @@ async function init() {
   $("restart").onclick = () => post("/api/control", { cmd: "restart" });
   $("filter").onchange = renderBags; $("search").oninput = renderBags;
   drawLiveBase();
-  $("ltthr").onchange = (e) => post("/api/livetag/threshold", { dbm: +e.target.value });
+  $("ltthrm").onchange = (e) => post("/api/laptops/threshold", { meters: +e.target.value });
+  $("ltlaptop").onchange = (e) => post("/api/laptops/select", { id: e.target.value });
   if (L.mode === "real") document.querySelector('nav button[data-tab="live"]').click();
   loop(); feedLoop(); liveLoop();
 }
@@ -529,16 +557,16 @@ function renderLiveTag(d) {
   $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#ED1C24";
   $("lthelp").innerHTML = !d.real
     ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
-    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): about -40 dBm is touching, -60 dBm is about 1 m, and below ${d.threshold_dbm} dBm the tag is too far and flashes red.
+    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): on ${esc(d.laptops.profile.name)}'s laptop about ${Math.round(d.curve.rssi_1m)} dBm is 1 m, and below ${Math.round(d.threshold_dbm)} dBm (${d.threshold_m} m) the tag is too far and flashes red.
        Distance is a rough estimate from signal strength (bodies, walls and how you hold the board change it a lot), so the blue band shows the likely range.`
     + (d.error ? `<br><span style="color:var(--red)">${esc(d.error)}</span>` : "");
-  if (document.activeElement !== $("ltthr")) $("ltthr").value = d.threshold_dbm;
+  renderLaptops(d);
   // zones + threshold
   const tx = ltX(d.threshold_m);
   $("ltgood").setAttribute("width", tx - LT.x0);
   $("ltbad").setAttribute("x", tx); $("ltbad").setAttribute("width", Math.max(0, LT.x1 + 30 - tx));
   $("ltthrline").setAttribute("x1", tx); $("ltthrline").setAttribute("x2", tx);
-  $("ltthrtext").setAttribute("x", tx); $("ltthrtext").textContent = `${d.threshold_dbm} dBm \u2248 ${d.threshold_m.toFixed(1)} m`;
+  $("ltthrtext").setAttribute("x", tx); $("ltthrtext").textContent = `${Math.round(d.threshold_dbm)} dBm \u2248 ${d.threshold_m.toFixed(1)} m`;
   // the tag
   const [label, col] = LTSTATE[d.state] || LTSTATE.no_tag;
   const has = d.distance_m != null && d.state !== "lost";
@@ -561,6 +589,51 @@ function renderLiveTag(d) {
   $("ltspark").innerHTML = sp;
   $("ltevents").innerHTML = d.events.length ? d.events.map(e => `<div>${e.ago_s} s ago: ${esc(e.text)}</div>`).join("") : "Nothing yet.";
 }
+// ---------------------------------------------------------------- per-laptop calibration
+function renderLaptops(d) {
+  const LP = d.laptops, p = LP.profile, sel = $("ltlaptop");
+  if (document.activeElement !== sel) {
+    const opts = LP.list.map(x => `<option value="${esc(x.id)}">${esc(x.name)}${x.calibrated ? "" : " (not calibrated)"}</option>`).join("");
+    if (sel.dataset.opts !== opts) { sel.innerHTML = opts; sel.dataset.opts = opts; }
+    sel.value = LP.active;
+  }
+  $("ltcurve").textContent = (p.calibrated ? "Calibrated" : "Not calibrated yet, using Alex's numbers")
+    + `: 1 m = ${p.rssi_1m.toFixed(1)} dBm, n = ${p.n.toFixed(2)}`;
+  $("ltcurve").style.color = p.calibrated ? "" : "var(--red)";
+  if (document.activeElement !== $("ltthrm")) $("ltthrm").value = p.threshold_m;
+  $("ltthrdbm").textContent = `= ${Math.round(p.threshold_dbm)} dBm on ${p.name}'s laptop`;
+  $("ltcalsum").textContent = `(${p.name}: ${p.points.length} measurement${p.points.length === 1 ? "" : "s"})`;
+  const m = d.measuring, btn = $("ltcalbtn");
+  btn.disabled = !!m || !d.real;
+  btn.textContent = m ? `Measuring... ${Math.ceil(m.left_s)} s (${m.packets} packets) - keep still` : "Measure (8 s)";
+  const rows = p.points.map((q, i) => `<tr><td>${q.d} m</td><td class="mono">${q.rssi.toFixed(1)} dBm</td>
+      <td class="note">curve says ${q.fit_rssi.toFixed(1)} (${(q.rssi - q.fit_rssi >= 0 ? "+" : "") + (q.rssi - q.fit_rssi).toFixed(1)})</td>
+      <td class="note">${q.samples ? q.samples + " packets" : "from Alex's notes"}</td>
+      <td><button class="small" onclick="deletePoint(${i})">Remove</button></td></tr>`).join("");
+  const html = p.points.length
+    ? `<table><tr><th>Distance</th><th>Measured</th><th>Fit</th><th></th><th></th></tr>${rows}</table><div class="note">${esc(p.note)}</div>`
+    : `<div class="note">No measurements for ${esc(p.name)}'s laptop yet.</div>`;
+  if ($("ltpoints").dataset.html !== html) { $("ltpoints").innerHTML = html; $("ltpoints").dataset.html = html; }
+}
+async function addLaptop() {
+  const name = $("ltnewname").value.trim();
+  if (!name) { $("ltnewname").focus(); return; }
+  await post("/api/laptops/select", { name });
+  $("ltnewname").value = "";
+  $("ltcal").open = true;
+}
+async function measurePoint() {
+  const d = +$("ltcald").value;
+  $("ltcalmsg").textContent = "";
+  const r = await post("/api/laptops/measure", { distance_m: d, seconds: 8 });
+  $("ltcalmsg").textContent = r.ok ? `${d} m: ${r.rssi} dBm (${r.packets} packets, spread ${r.spread_db} dB)` : r.error || r.detail || "failed";
+  $("ltcalmsg").style.color = r.ok ? "" : "var(--red)";
+}
+async function deletePoint(i) { await post("/api/laptops/point/delete", { index: i }); }
+async function clearPoints() {
+  if (confirm("Delete all calibration measurements for this laptop?")) await post("/api/laptops/clear", {});
+}
+
 async function scenario(id) {
   const sc = L.scenarios.find(s => s.id === id);
   $("busy").textContent = "Jumping to: " + sc.title + "..."; $("busy").classList.add("on");

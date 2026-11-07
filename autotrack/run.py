@@ -28,6 +28,9 @@ def main():
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--no-smoothing", action="store_true", help="turn off RSSI smoothing / zone hysteresis")
     p.add_argument("--no-browser", action="store_true")
+    p.add_argument("--laptop", default=None,
+                   help="whose laptop this is (e.g. daniel) - picks that laptop's signal calibration; "
+                        "also selectable on the Live ESP32 page, and remembered")
     a = p.parse_args()
 
     if not (ROOT / "data" / "replay.json").exists():
@@ -37,7 +40,7 @@ def main():
 
     import uvicorn
     from autotrack import server
-    server.CONFIG.update(mode=a.mode, speed=a.speed, smoothing=not a.no_smoothing)
+    server.CONFIG.update(mode=a.mode, speed=a.speed, smoothing=not a.no_smoothing, laptop=a.laptop)
 
     url = f"http://127.0.0.1:{a.port}"
     print("=" * 60)

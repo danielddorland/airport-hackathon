@@ -10,8 +10,14 @@ server.py - the web server (FastAPI). Everything runs on this laptop; no interne
   POST /api/control                 play / pause / speed / jump to a scenario / restart
   POST /api/action                  staff buttons: pull, approve, security, recover, ack
   GET  /api/livetag                 the real ESP32: signal, rough distance, too far or not
-  POST /api/livetag/threshold       change the "too far" signal level (default -50 dBm)
+  POST /api/livetag/threshold       change the "too far" signal level in dBm (old API)
   POST /api/live/beep               Test beep / Stop buttons for the real ESP32
+  GET  /api/laptops                 every laptop's calibration + which one THIS computer is
+  POST /api/laptops/select          {"id": "daniel"} - switch this computer's profile (creates it if new)
+  POST /api/laptops/measure         {"distance_m": 1.0} - measure the tag for 5 s at a known distance
+  POST /api/laptops/point/delete    {"index": 0} - drop one measurement
+  POST /api/laptops/clear           drop all measurements of this laptop
+  POST /api/laptops/threshold       {"meters": 1.9} - "too far" limit in metres
 
 The simulation clock runs in a background task. In real mode, real_ble.py scans the laptop's
 Bluetooth for the ESP32 tag and sends it beep/flash commands.
@@ -19,6 +25,7 @@ Bluetooth for the ESP32 tag and sends it beep/flash commands.
 
 import asyncio
 import json
+import statistics
 import threading
 import time
 from pathlib import Path
@@ -27,12 +34,13 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from .laptops import Laptops
 from .layout import ROOT
 from .livetag import LiveTagMonitor
 from .sim import LIVE_RECEIVER, Simulation
 
 STATIC = ROOT / "static"
-CONFIG = {"mode": "sim", "speed": 10.0, "smoothing": True}
+CONFIG = {"mode": "sim", "speed": 10.0, "smoothing": True, "laptop": None}
 
 app = FastAPI(title="AutoTrack")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
@@ -52,7 +60,10 @@ async def startup():
     state["loop"] = asyncio.get_running_loop()
     state["speed"] = CONFIG["speed"]
     state["sim"] = Simulation(smoothing=CONFIG["smoothing"])
-    state["live"] = LiveTagMonitor(log=lambda m: print(m, flush=True))
+    log = lambda m: print(m, flush=True)  # noqa: E731
+    state["live"] = LiveTagMonitor(laptops=Laptops(active=CONFIG.get("laptop"), log=log), log=log)
+    p = state["live"].laptops.profile()
+    print(f"This laptop: {p['name']} ({'calibrated' if p['calibrated'] else 'NOT calibrated - using Alex numbers'})", flush=True)
     if CONFIG["mode"] == "real":
         await start_real_ble()
     asyncio.create_task(clock_loop())
@@ -302,3 +313,71 @@ async def live_beep(body: dict):
     mode = 0 if int(body.get("mode", 3)) == 0 else 3
     ok = await state["live"].manual(mode)
     return {"ok": ok, "status": state["ble"].status.get("last_write")}
+
+
+# ---------------------------------------------------------------------- per-laptop calibration
+@app.get("/api/laptops")
+def laptops():
+    return state["live"].laptops.to_json()
+
+
+@app.post("/api/laptops/select")
+def laptops_select(body: dict):
+    name = str(body.get("id") or body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "need 'id' or 'name'")
+    state["live"].select_laptop(name)
+    return {"ok": True, **state["live"].laptops.to_json()}
+
+
+@app.post("/api/laptops/measure")
+async def laptops_measure(body: dict):
+    """Hold the ESP still at `distance_m` from this laptop; listen for `seconds` and store the median."""
+    live = state["live"]
+    if not state["ble"]:
+        return {"ok": False, "error": "Calibration needs the real ESP32: start with  python run.py --mode real"}
+    try:
+        d = float(body.get("distance_m"))
+        seconds = max(2.0, min(15.0, float(body.get("seconds", 5))))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "distance_m must be a number")
+    if not 0.05 <= d <= 20:
+        raise HTTPException(400, "distance_m must be between 0.05 and 20")
+    try:
+        got = await live.measure(seconds)
+    except RuntimeError as e:
+        return {"ok": False, "error": str(e)}
+    if len(got) < 5:
+        return {"ok": False, "error": f"Only heard the tag {len(got)} times in {seconds:.0f} s. Is it powered and "
+                                      "within range? Try again closer, or measure for longer."}
+    med = statistics.median(got)
+    spread = statistics.pstdev(got)
+    p = live.laptops.add_point(d, med, len(got))
+    live._note(f"Calibration: {med:.1f} dBm at {d:g} m ({len(got)} packets, spread {spread:.1f} dB) "
+               f"-> {p['name']}: 1 m = {p['rssi_1m']:.1f} dBm, n = {p['n']:.2f}")
+    return {"ok": True, "rssi": round(med, 1), "packets": len(got), "spread_db": round(spread, 1),
+            **live.laptops.to_json()}
+
+
+@app.post("/api/laptops/point/delete")
+def laptops_point_delete(body: dict):
+    try:
+        state["live"].laptops.delete_point(int(body.get("index")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "index must be a number")
+    return {"ok": True, **state["live"].laptops.to_json()}
+
+
+@app.post("/api/laptops/clear")
+def laptops_clear(body: dict | None = None):
+    state["live"].laptops.clear_points()
+    return {"ok": True, **state["live"].laptops.to_json()}
+
+
+@app.post("/api/laptops/threshold")
+def laptops_threshold(body: dict):
+    try:
+        state["live"].set_threshold_m(float(body.get("meters")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "meters must be a number")
+    return {"ok": True, **state["live"].laptops.to_json()}

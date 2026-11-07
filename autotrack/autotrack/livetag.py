@@ -2,14 +2,15 @@
 livetag.py - "stay near the checkpoint" for the one real ESP32 tag.
 
 The laptop is the checkpoint. Its Bluetooth hears the ESP32 several times a second and
-reports the signal strength (RSSI). Strong signal (-20 to -30 dBm) = very close;
-weak (below -50 dBm) = far away.
+reports the signal strength (RSSI). The tag transmits at -12 dBm (see the sketch's
+TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = more than ~2 m.
 
   * We smooth the RSSI (median of the last 3 seconds), because single readings jump around.
   * We turn it into a ROUGH distance for the map, using a curve fitted to our own
-    measurements on Nov 7: about -24 dBm at 30 cm and about -45 dBm at 3 m.
+    measurements on Nov 7 (Alex's laptop, tag at -12 dBm): touching -39, 30 cm -50,
+    1 m -60, 3 m -68 dBm. The curve below matches those within about 1 dB.
     Bodies, walls and how the board is held change this a lot, so the metres are approximate.
-  * If the smoothed signal is weaker than the threshold (default -50 dBm) for 2 checks in a
+  * If the smoothed signal is weaker than the threshold (default -65 dBm, ~2 m) for 2 checks in a
     row (1 s), the tag is TOO FAR: we tell the ESP32 to flash red (+ beep if it has a buzzer).
     It goes back to normal once the signal is 3 dB stronger than the threshold again
     (that gap stops it flickering on and off right at the edge).
@@ -22,14 +23,14 @@ import statistics
 import time
 
 TAG = "TAG-0001"
-DEFAULT_THRESHOLD_DBM = -50
+DEFAULT_THRESHOLD_DBM = -65   # about 2 m with the tag at -12 dBm
 RETURN_MARGIN_DB = 3        # must come back this much stronger than the threshold to stop alerting
 WINDOW_S = 3.0              # smoothing window
 CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we change state
 LOST_AFTER_S = 6.0
 # Distance curve fitted to our measurements: RSSI = RSSI_1M - 10 * N * log10(distance_m)
-RSSI_1M = -35.0
-PATH_N = 2.1
+RSSI_1M = -60.0
+PATH_N = 1.8
 
 MODE_NORMAL, MODE_ALERT, MODE_LOCATE = 0, 1, 3
 

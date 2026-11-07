@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { createClient } from "redis";
 import type { Config, Reading, Runtime } from "./types";
 
 export type Snapshot = {
@@ -115,13 +116,74 @@ function findRedisEnv(): { url: string; token: string } | null {
   return null;
 }
 
+/** A plain redis:// or rediss:// connection string (Redis Cloud, or Upstash's KV_URL). */
+function findRedisUrl(): string | null {
+  const env = process.env;
+  const keys = ["REDIS_URL", "KV_URL", ...Object.keys(env).filter((k) => /(REDIS_URL|KV_URL)$/.test(k))];
+  for (const k of keys) {
+    const v = env[k];
+    if (v && /^rediss?:\/\//.test(v)) return v;
+  }
+  return null;
+}
+
+/** Store over a normal Redis TCP connection, reused across requests on a warm instance. */
+class TcpRedisStore implements Store {
+  kind = "redis" as const;
+  private client: ReturnType<typeof createClient>;
+  private ready: Promise<unknown>;
+
+  constructor(url: string) {
+    this.client = createClient({
+      url,
+      socket: { connectTimeout: 5000, reconnectStrategy: (n: number) => Math.min(100 * (n + 1), 2000) },
+    });
+    this.client.on("error", (e: unknown) => console.error("redis error:", e));
+    this.ready = this.client.connect();
+  }
+
+  private async c() {
+    await this.ready;
+    return this.client;
+  }
+
+  async loadAll(): Promise<Snapshot> {
+    const c = await this.c();
+    const [cfg, r, rt] = await Promise.all([c.get(K_CONFIG), c.hGetAll(K_READINGS), c.get(K_RUNTIME)]);
+    const readings: Record<string, Reading> = {};
+    for (const [id, v] of Object.entries(r ?? {})) {
+      const parsed = parse<Reading>(v);
+      if (parsed) readings[id] = parsed;
+    }
+    return { config: parse<Config>(cfg), readings, runtime: parse<Runtime>(rt) };
+  }
+  async getConfig() {
+    return parse<Config>(await (await this.c()).get(K_CONFIG));
+  }
+  async setConfig(cfg: Config) {
+    await (await this.c()).set(K_CONFIG, JSON.stringify(cfg));
+  }
+  async putReading(r: Reading) {
+    await (await this.c()).hSet(K_READINGS, r.id, JSON.stringify(r));
+  }
+  async deleteReading(id: string) {
+    await (await this.c()).hDel(K_READINGS, id);
+  }
+  async setRuntime(r: Runtime) {
+    await (await this.c()).set(K_RUNTIME, JSON.stringify(r));
+  }
+}
+
 export function getStore(): Store {
   if (store) return store;
   const creds = findRedisEnv();
   const url = creds?.url;
   const token = creds?.token;
+  const tcpUrl = findRedisUrl();
   if (url && token) {
     store = new RedisStore(new Redis({ url, token, automaticDeserialization: false }));
+  } else if (tcpUrl) {
+    store = new TcpRedisStore(tcpUrl);
   } else {
     if (process.env.VERCEL) {
       console.warn("No Redis env vars found: using in-memory store, which will NOT work reliably on Vercel.");

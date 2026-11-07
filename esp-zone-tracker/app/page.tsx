@@ -501,6 +501,13 @@ export default function Dashboard() {
                 step={0.5}
                 onCommit={(v) => patch({ alertDelayMs: v * 1000 })}
               />
+              <NumberField
+                label="Smoothing (s)"
+                value={config.smoothingS}
+                step={0.5}
+                onCommit={(v) => patch({ smoothingS: v })}
+                hint="Higher = steadier dot, slower to follow. 3–6 is typical."
+              />
             </div>
           </section>
 

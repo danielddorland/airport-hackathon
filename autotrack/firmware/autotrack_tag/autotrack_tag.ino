@@ -79,6 +79,11 @@
                               // with the normal setting); then we play a 2.7 kHz tone.
 #define LED_BRIGHTNESS   40   // 0-255, normal blinks (kept low so it is not blinding)
 #define ALERT_BRIGHTNESS 160  // 0-255, WRONG AIRCRAFT flashing (bright on purpose)
+// Radio transmit power. At full power (ESP_PWR_LVL_P9 = +9 dBm) the laptop's receiver
+// overloads within about 1 m, so touching and 30 cm both read about -20 dBm.
+// -12 dBm keeps close range measurable and still reaches across a room.
+// Other choices (work on ESP32 and ESP32-S3): ESP_PWR_LVL_N12, _N9, _N6, _N3, _N0, _P3, _P6, _P9
+#define TX_POWER_LEVEL ESP_PWR_LVL_N12
 
 // The tag's secret key for "TAG-0001". The SAME value is in data/tag_keys.json
 // as 807caa672f37e3f1106012fc70a608d8. Never print or broadcast it.
@@ -414,8 +419,8 @@ void setup() {
 
   // ---- Bluetooth
   BLEDevice::init(DEVICE_NAME);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, TX_POWER_LEVEL);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, TX_POWER_LEVEL);
 
   BLEServer *server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());

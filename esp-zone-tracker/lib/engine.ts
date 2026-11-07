@@ -183,5 +183,6 @@ export async function computeState(
     alert,
     status,
     outsideSince,
+    storage: store.kind,
   };
 }

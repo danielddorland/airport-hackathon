@@ -8,6 +8,7 @@ export type Snapshot = {
 };
 
 export interface Store {
+  kind: "redis" | "memory";
   loadAll(): Promise<Snapshot>;
   getConfig(): Promise<Config | null>;
   setConfig(c: Config): Promise<void>;
@@ -31,6 +32,7 @@ function parse<T>(v: unknown): T | null {
 }
 
 class RedisStore implements Store {
+  kind = "redis" as const;
   constructor(private redis: Redis) {}
 
   async loadAll(): Promise<Snapshot> {
@@ -68,6 +70,7 @@ type Mem = { config: Config | null; readings: Record<string, Reading>; runtime: 
 const g = globalThis as unknown as { __eztMem?: Mem };
 
 class MemoryStore implements Store {
+  kind = "memory" as const;
   private m: Mem = (g.__eztMem ??= { config: null, readings: {}, runtime: null });
   async loadAll() {
     return structuredClone({ config: this.m.config, readings: this.m.readings, runtime: this.m.runtime });
@@ -91,10 +94,32 @@ class MemoryStore implements Store {
 
 let store: Store | null = null;
 
+/**
+ * Finds Upstash REST credentials. Vercel's integration may add a custom prefix
+ * (e.g. STORAGE_KV_REST_API_URL), so match any *KV_REST_API_URL / *REDIS_REST_URL.
+ */
+function findRedisEnv(): { url: string; token: string } | null {
+  const env = process.env;
+  const pairs: [string, string][] = [
+    ["KV_REST_API_URL", "KV_REST_API_TOKEN"],
+    ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+  ];
+  for (const key of Object.keys(env)) {
+    if (/(KV_REST_API_URL|REDIS_REST_URL)$/.test(key) && key !== "KV_REST_API_URL" && key !== "UPSTASH_REDIS_REST_URL") {
+      pairs.push([key, key.replace(/URL$/, "TOKEN")]);
+    }
+  }
+  for (const [u, t] of pairs) {
+    if (env[u] && env[t]) return { url: env[u]!, token: env[t]! };
+  }
+  return null;
+}
+
 export function getStore(): Store {
   if (store) return store;
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const creds = findRedisEnv();
+  const url = creds?.url;
+  const token = creds?.token;
   if (url && token) {
     store = new RedisStore(new Redis({ url, token, automaticDeserialization: false }));
   } else {

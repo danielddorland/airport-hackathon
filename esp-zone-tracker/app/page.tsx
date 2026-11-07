@@ -270,9 +270,17 @@ export default function Dashboard() {
   const calibPoint = config.calibPoint ?? defaultCalibPoint(config);
   const anchors = state?.anchors ?? [];
   const onlineCount = anchors.filter((a) => a.online).length;
+  const noDatabase =
+    state?.storage === "memory" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(origin.replace(/^https?:\/\//, "").split(":")[0]);
 
   return (
     <div className={alerting ? "app alerting" : "app"}>
+      {noDatabase && (
+        <div className="db-banner" role="alert">
+          <strong>No database connected.</strong> Laptops will flicker between online and offline and settings won&apos;t
+          stick. In Vercel: Storage → connect an Upstash Redis database to this project, then Redeploy.
+        </div>
+      )}
       {alerting && (
         <div className="alert-banner" role="alert">
           <strong>⚠ The ESP has left the safe zone</strong>

@@ -6,11 +6,13 @@ reports the signal strength (RSSI). The tag transmits at -12 dBm (see the sketch
 TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = more than ~2 m.
 
   * We smooth the RSSI (median of the last 3 seconds), because single readings jump around.
-  * We turn it into a ROUGH distance for the map, using a curve fitted to our own
-    measurements on Nov 7 (Alex's laptop, tag at -12 dBm): touching -39, 30 cm -50,
-    1 m -60, 3 m -68 dBm. The curve below matches those within about 1 dB.
+  * We turn it into a ROUGH distance for the map, using THIS laptop's calibration curve
+    (laptops.py). Laptops hear the tag 5-10 dB differently, so each one is calibrated on its
+    own; Alex's curve (Nov 7, tag at -12 dBm: touching -39, 30 cm -50, 1 m -60, 3 m -68 dBm)
+    is the starting point for laptops that haven't been measured yet.
     Bodies, walls and how the board is held change this a lot, so the metres are approximate.
-  * If the smoothed signal is weaker than the threshold (default -65 dBm, ~2 m) for 2 checks in a
+  * The "too far" limit is set in metres (default 1.9 m = -65 dBm on Alex's laptop) and turned
+    into dBm with this laptop's curve. If the smoothed signal is weaker than that for 2 checks in a
     row (1 s), the tag is TOO FAR: we tell the ESP32 to flash red (+ beep if it has a buzzer).
     It goes back to normal once the signal is 3 dB stronger than the threshold again
     (that gap stops it flickering on and off right at the edge).
@@ -18,32 +20,27 @@ TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = mo
 """
 
 import asyncio
-import math
 import statistics
 import time
 
+from .laptops import Laptops, m_to_rssi, rssi_to_m as _rssi_to_m
+
 TAG = "TAG-0001"
-DEFAULT_THRESHOLD_DBM = -65   # about 2 m with the tag at -12 dBm
 RETURN_MARGIN_DB = 3        # must come back this much stronger than the threshold to stop alerting
 WINDOW_S = 3.0              # smoothing window
 CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we change state
 LOST_AFTER_S = 6.0
-# Distance curve fitted to our measurements: RSSI = RSSI_1M - 10 * N * log10(distance_m)
-RSSI_1M = -60.0
-PATH_N = 1.8
 
 MODE_NORMAL, MODE_ALERT, MODE_LOCATE = 0, 1, 3
 
 
-def rssi_to_m(rssi):
-    return 10 ** ((RSSI_1M - rssi) / (10 * PATH_N))
-
-
 class LiveTagMonitor:
-    def __init__(self, ble=None, threshold_dbm=DEFAULT_THRESHOLD_DBM, log=print):
+    def __init__(self, ble=None, laptops=None, log=print):
         self.ble = ble                    # RealBLE, or None in simulation mode
-        self.threshold = threshold_dbm
+        self.laptops = laptops or Laptops(log=log)
         self.log = log
+        self._measuring = None            # list collecting raw RSSI during a calibration measurement
+        self.measure_until = None
         self.samples = []                 # (time, rssi)
         self.state = "no_tag"             # no_tag | ok | too_far | lost
         self.pending_state, self.pending_count = None, 0
@@ -60,10 +57,43 @@ class LiveTagMonitor:
         now = time.time()
         self.samples.append((now, s["rssi"]))
         self.last_seen = now
+        if self._measuring is not None:
+            self._measuring.append(s["rssi"])
+
+    # ------------------------------------------------------------ this laptop's curve
+    def rssi_to_m(self, rssi):
+        return _rssi_to_m(rssi, self.laptops.profile())
+
+    @property
+    def threshold(self):
+        """The "too far" limit in dBm for THIS laptop (stored in metres per laptop)."""
+        p = self.laptops.profile()
+        return m_to_rssi(p["threshold_m"], p)
 
     def set_threshold(self, dbm):
-        self.threshold = max(-90, min(-20, float(dbm)))
-        self._note(f"Threshold set to {self.threshold:.0f} dBm (about {rssi_to_m(self.threshold):.1f} m)")
+        """Old API (dBm): converted to metres with this laptop's curve."""
+        dbm = max(-90, min(-20, float(dbm)))
+        self.set_threshold_m(self.rssi_to_m(dbm))
+
+    def set_threshold_m(self, m):
+        p = self.laptops.set_threshold_m(m)
+        self._note(f"Too-far limit set to {p['threshold_m']:.1f} m (= {self.threshold:.0f} dBm on {p['name']}'s laptop)")
+
+    def select_laptop(self, name_or_id):
+        p = self.laptops.select(name_or_id)
+        self._note(f"This laptop is now {p['name']}'s" + ("" if p["calibrated"] else " (not calibrated yet - using Alex's numbers)"))
+
+    async def measure(self, seconds=5.0):
+        """Collect every raw RSSI reading for `seconds` (the tag held still at a known distance)."""
+        if self._measuring is not None:
+            raise RuntimeError("a measurement is already running")
+        self._measuring = []
+        self.measure_until = time.time() + seconds
+        try:
+            await asyncio.sleep(seconds)
+            return list(self._measuring)
+        finally:
+            self._measuring, self.measure_until = None, None
 
     def _note(self, text):
         self.events.append({"t": time.time(), "text": text})
@@ -141,19 +171,25 @@ class LiveTagMonitor:
     def status(self):
         now = time.time()
         st = getattr(self.ble, "status", None) or {}
+        p = self.laptops.profile()
         return {
             "real": self.ble is not None,
             "scanning": bool(st.get("scanning")),
             "error": st.get("error"),
             "state": self.state,
             "rssi": None if self.smoothed is None else round(self.smoothed, 1),
-            "distance_m": None if self.smoothed is None else round(rssi_to_m(self.smoothed), 2),
-            "threshold_dbm": self.threshold,
-            "threshold_m": round(rssi_to_m(self.threshold), 2),
+            "distance_m": None if self.smoothed is None else round(self.rssi_to_m(self.smoothed), 2),
+            "threshold_dbm": round(self.threshold, 1),
+            "threshold_m": p["threshold_m"],
             "seen_ago_s": None if self.last_seen is None else round(now - self.last_seen, 1),
             "packets_3s": len(self.samples),
             "history": [[round(t - now, 1), round(r, 1)] for t, r in self.history],
             "events": [{"ago_s": round(now - e["t"]), "text": e["text"]} for e in self.events][::-1],
             "last_write": st.get("last_write"),
-            "curve": {"rssi_1m": RSSI_1M, "n": PATH_N},
+            "curve": {"rssi_1m": p["rssi_1m"], "n": p["n"]},
+            "laptops": self.laptops.to_json(),
+            "measuring": None if self.measure_until is None else {
+                "left_s": round(max(0.0, self.measure_until - now), 1),
+                "packets": len(self._measuring or []),
+            },
         }

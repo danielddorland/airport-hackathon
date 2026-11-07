@@ -2,4 +2,6 @@
 __pycache__/
 *.pyc
 data/events.db*
+data/this_laptop.json
+data/laptop_profiles.tmp
 bhs/live_telemetry.csv

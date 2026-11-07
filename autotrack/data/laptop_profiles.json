@@ -1,0 +1,41 @@
+{
+  "profiles": {
+    "alex": {
+      "name": "Alex",
+      "rssi_1m": -60.0,
+      "n": 1.8,
+      "threshold_m": 1.9,
+      "calibrated": true,
+      "points": [
+        {
+          "d": 0.3,
+          "rssi": -50.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 1.0,
+          "rssi": -60.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 3.0,
+          "rssi": -68.0,
+          "samples": null,
+          "t": null
+        }
+      ],
+      "note": "Measured Nov 7 on Alex's laptop (tag at -12 dBm)."
+    },
+    "daniel": {
+      "name": "Daniel",
+      "rssi_1m": -60.0,
+      "n": 1.8,
+      "threshold_m": 1.9,
+      "calibrated": false,
+      "points": [],
+      "note": "Not calibrated yet - using Alex's numbers."
+    }
+  }
+}

@@ -102,6 +102,14 @@
           justify-content: center; z-index: 20; font-size: 20px; font-weight: 700; }
   #busy.on { display: flex; }
   .note { font-size: 12px; color: var(--muted); }
+  #ltmap, #ltspark { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); box-shadow: var(--inset); }
+  .ltstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .ltstats div { box-shadow: var(--inset); border-radius: 12px; padding: 10px; text-align: center; }
+  .ltstats span { display: block; font-size: 12px; color: var(--muted); }
+  .ltstats b { font-family: var(--mono); font-size: 26px; }
+  #lttag { transition: transform 300ms linear; }
+  #lttag.flash circle { animation: ltblink .35s infinite alternate; }
+  @keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
 </style>
 </head>
 <body>
@@ -124,12 +132,38 @@
 </header>
 <nav>
   <button data-tab="ops" class="on">Ops dashboard</button>
+  <button data-tab="live">Live ESP32</button>
   <button data-tab="loader">Loader handheld</button>
   <button data-tab="passenger">Passenger view</button>
   <button data-tab="feed">Message feed</button>
 </nav>
 
 <main>
+  <!-- ======================= LIVE ESP32 ======================= -->
+  <section class="tab" id="tab-live">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Live ESP32 tag: stay near the checkpoint</h2>
+        <span class="badge" id="ltbadge">-</span>
+      </div>
+      <p class="note" id="lthelp" style="margin:6px 0 10px"></p>
+      <svg id="ltmap" viewBox="0 0 1000 250"></svg>
+      <div class="ltstats">
+        <div><span>Signal (smoothed)</span><b id="ltrssi">--</b></div>
+        <div><span>Distance (rough)</span><b id="ltdist">--</b></div>
+        <div><span>State</span><b id="ltstate">--</b></div>
+      </div>
+      <div class="row" style="margin:12px 0">
+        <label>Too far when weaker than <input type="number" id="ltthr" value="-50" step="1" style="width:80px"> dBm</label>
+        <button class="primary" onclick="beep(3)">Test beep</button>
+        <button onclick="beep(0)">Stop</button>
+      </div>
+      <h3 style="margin:6px 0">Signal, last 60 seconds</h3>
+      <svg id="ltspark" viewBox="0 0 1000 140"></svg>
+      <h3 style="margin:10px 0 4px">What happened</h3>
+      <div id="ltevents" class="note"></div>
+    </div>
+  </section>
   <!-- ======================= OPS ======================= -->
   <section class="tab on" id="tab-ops">
     <div class="ops">
@@ -161,19 +195,6 @@
           <h3>Demo scenarios</h3>
           <p class="note" style="margin:4px 0 6px">Click one: the clock jumps to just before it happens and slows to 2x. Click the bag to follow it.</p>
           <div id="scenarios"></div>
-        </div>
-        <div class="card" id="livecard">
-          <h3>Live ESP32 tag <span class="badge" id="livebadge">-</span></h3>
-          <p class="note" style="margin:4px 0 8px" id="livehelp"></p>
-          <div class="row">
-            <button class="primary" onclick="liveCheckin('GA2')">Check in live bag on AC 1234 (wrong plane)</button>
-            <button onclick="liveCheckin('GA4')">...on AC 857 (correct)</button>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <button onclick="post('/api/live/near',{})">Bring tag to loader GA4 (button fallback)</button>
-            <button class="small" onclick="beep(3)">Test beep</button><button class="small" onclick="beep(0)">Stop</button>
-          </div>
-          <div style="margin-top:8px" id="livestat" class="note"></div>
         </div>
         <div class="card">
           <h3 style="margin-bottom:8px">BLE tag fleet (closed loop inside YYZ)</h3>
@@ -285,7 +306,10 @@ async function init() {
     try { await post("/api/control", { cmd: "seek", value: +e.target.value }); } finally { $("busy").classList.remove("on"); } };
   $("restart").onclick = () => post("/api/control", { cmd: "restart" });
   $("filter").onchange = renderBags; $("search").oninput = renderBags;
-  loop(); feedLoop();
+  drawLiveBase();
+  $("ltthr").onchange = (e) => post("/api/livetag/threshold", { dbm: +e.target.value });
+  if (L.mode === "real") document.querySelector('nav button[data-tab="live"]').click();
+  loop(); feedLoop(); liveLoop();
 }
 
 function px(n) { return [n.x, n.y]; }
@@ -348,7 +372,6 @@ function render() {
   const f = S.tags;
   $("fleet").innerHTML = [["in_use", "on bags"], ["in_return_bins", "in return bins"], ["charging", "charging"],
     ["available", "ready"], ["returned_total", "returned"]].map(([k, l]) => `<div><b>${f[k]}</b><span>${l}</span></div>`).join("");
-  renderLive();
   renderMap();
   renderBags();
   renderLoader();
@@ -465,26 +488,79 @@ function renderBags() {
     <td class="note">${esc(b.reason)}</td></tr>`).join("");
 }
 
-function renderLive() {
-  const lv = S.live, st = lv.real_status;
-  $("livebadge").textContent = lv.real ? (st && st.scanning ? "Bluetooth scanning" : "Bluetooth: " + (st && st.error ? "error" : "starting")) : "simulated";
-  $("livebadge").style.background = lv.real ? (st && st.scanning ? "#1F9D55" : "#ED1C24") : "#5d6475";
-  $("livehelp").innerHTML = lv.real
-    ? `The laptop's Bluetooth is the receiver at belt loader <b>GA4</b> (serves AC 857). Check in the live bag, wait until it reaches lane GA4, then walk the ESP32 up to the laptop (signal above ${lv.near_dbm ?? -65} dBm). The loader's RFID read is simulated.`
-    : `Not in real mode, so the live bag's signal is simulated. Start with <span class="mono">python run.py --mode real</span> to use the ESP32. Use "Bring tag to loader" to trigger the loader read.`;
-  let s = "";
-  if (lv.id) {
-    const b = S.bags.find(x => x.id === lv.id);
-    s += `Live bag <a href="#" onclick="showBag('${lv.id}');return false"><b>${lv.id}</b></a> (tag ${lv.tag})${b ? `: ${pill(b.status)} in ${esc(b.zone_name)}` : " (finished)"}`;
-    if (lv.real && !lv.real_recent) s += `<br><span style="color:var(--amber)">The laptop is not hearing the ESP32 right now - the bag uses a simulated signal. Use the button to trigger the loader.</span>`;
-    if (lv.real) s += `<br>Laptop hears the tag at: <b>${lv.rssi ?? "--"} dBm</b> <div class="bar"><i style="width:${lv.rssi == null ? 0 : Math.max(0, Math.min(100, (lv.rssi + 100) * 2))}%"></i></div>`;
-  }
-  if (st && st.error) s += `<br><span style="color:var(--red)">${esc(st.error)}</span>`;
-  if (st && st.last_write) s += `<br>Last tag command: ${esc(st.last_write.mode_name)} - ${st.last_write.ok ? "delivered" : "failed: " + esc(st.last_write.detail || "")}`;
-  $("livestat").innerHTML = s;
-}
-async function liveCheckin(gate) { const r = await post("/api/live/checkin", { gate }); if (r.bag) showBag(r.bag); }
 async function beep(mode) { const r = await post("/api/live/beep", { mode }); if (!r.ok) alert(r.error || "Tag did not accept the command (see the server window)."); }
+
+// ---------------------------------------------------------------- live ESP32 (stay near the checkpoint)
+const LT = { maxM: 7, x0: 130, x1: 960, y: 140 };
+const ltX = (m) => LT.x0 + Math.min(m, LT.maxM) / LT.maxM * (LT.x1 - LT.x0);
+function drawLiveBase() {
+  let s = `<rect id="ltgood" x="${LT.x0}" y="${LT.y - 45}" width="0" height="90" fill="#1F9D55" opacity=".12"/>
+    <rect id="ltbad" x="0" y="${LT.y - 45}" width="0" height="90" fill="#ED1C24" opacity=".10"/>
+    <line x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}" stroke="#aab0bf" stroke-width="4" stroke-linecap="round"/>`;
+  for (let m = 0; m <= LT.maxM; m++) {
+    s += `<line x1="${ltX(m)}" y1="${LT.y + 45}" x2="${ltX(m)}" y2="${LT.y + 55}" stroke="#8a90a0" stroke-width="2"/>
+      <text x="${ltX(m)}" y="${LT.y + 72}" text-anchor="middle" font-size="14" fill="#5d6475">${m} m${m === LT.maxM ? "+" : ""}</text>`;
+  }
+  // the laptop = the checkpoint
+  s += `<g transform="translate(40, ${LT.y - 32})"><rect x="0" y="0" width="70" height="44" rx="5" fill="#1d2230"/>
+      <rect x="5" y="5" width="60" height="34" rx="2" fill="#7fb3ff"/><rect x="-8" y="46" width="86" height="8" rx="3" fill="#1d2230"/></g>
+    <text x="75" y="${LT.y + 46}" text-anchor="middle" font-size="13" font-weight="700">Laptop</text>
+    <text x="75" y="${LT.y + 62}" text-anchor="middle" font-size="12" fill="#5d6475">(checkpoint)</text>
+    <line id="ltthrline" x1="0" y1="${LT.y - 60}" x2="0" y2="${LT.y + 45}" stroke="#ED1C24" stroke-width="3" stroke-dasharray="8 6"/>
+    <text id="ltthrtext" x="0" y="${LT.y - 66}" text-anchor="middle" font-size="13" font-weight="700" fill="#ED1C24"></text>
+    <rect id="ltrange" x="0" y="${LT.y - 8}" width="0" height="16" rx="8" fill="#2563EB" opacity=".18"/>
+    <g id="lttag" style="transform: translate(${LT.x0}px, ${LT.y}px)">
+      <circle r="18" fill="#2563EB" stroke="#fff" stroke-width="4"/>
+      <text y="5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">ESP</text>
+      <text id="lttaglabel" y="-28" text-anchor="middle" font-size="14" font-weight="800" fill="#1d2230"></text>
+    </g>`;
+  $("ltmap").innerHTML = s;
+}
+const LTSTATE = { ok: ["IN RANGE", "#1F9D55"], too_far: ["TOO FAR - tag flashing", "#ED1C24"],
+                  lost: ["LOST - no signal", "#ED1C24"], no_tag: ["waiting for tag", "#8a90a0"] };
+async function liveLoop() {
+  try {
+    if (document.querySelector("#tab-live.on")) renderLiveTag(await get("/api/livetag"));
+  } catch (e) { console.warn(e); }
+  setTimeout(liveLoop, 300);
+}
+function renderLiveTag(d) {
+  $("ltbadge").textContent = !d.real ? "not in real mode" : d.error ? "Bluetooth error" : d.scanning ? "Bluetooth scanning" : "starting";
+  $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#ED1C24";
+  $("lthelp").innerHTML = !d.real
+    ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
+    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): about -20 to -30 dBm is very close, below ${d.threshold_dbm} dBm is too far, and the ESP32 flashes red.
+       Distance is a rough estimate from signal strength (bodies, walls and how you hold the board change it a lot), so the blue band shows the likely range.`
+    + (d.error ? `<br><span style="color:var(--red)">${esc(d.error)}</span>` : "");
+  if (document.activeElement !== $("ltthr")) $("ltthr").value = d.threshold_dbm;
+  // zones + threshold
+  const tx = ltX(d.threshold_m);
+  $("ltgood").setAttribute("width", tx - LT.x0);
+  $("ltbad").setAttribute("x", tx); $("ltbad").setAttribute("width", Math.max(0, LT.x1 + 30 - tx));
+  $("ltthrline").setAttribute("x1", tx); $("ltthrline").setAttribute("x2", tx);
+  $("ltthrtext").setAttribute("x", tx); $("ltthrtext").textContent = `${d.threshold_dbm} dBm \u2248 ${d.threshold_m.toFixed(1)} m`;
+  // the tag
+  const [label, col] = LTSTATE[d.state] || LTSTATE.no_tag;
+  const has = d.distance_m != null && d.state !== "lost";
+  const m = has ? d.distance_m : LT.maxM;
+  $("lttag").style.transform = `translate(${ltX(m)}px, ${LT.y}px)`;
+  $("lttag").firstElementChild.setAttribute("fill", col);
+  $("lttag").classList.toggle("flash", d.state === "too_far" || d.state === "lost");
+  $("lttaglabel").textContent = has ? `${Math.round(d.rssi)} dBm` : (d.state === "lost" ? "no signal" : "");
+  if (has) { const lo = ltX(m / 1.5), hi = ltX(m * 1.5); $("ltrange").setAttribute("x", lo); $("ltrange").setAttribute("width", hi - lo); }
+  else $("ltrange").setAttribute("width", 0);
+  $("ltrssi").textContent = d.rssi == null ? "--" : `${Math.round(d.rssi)} dBm`;
+  $("ltdist").textContent = has ? `~${d.distance_m < 1 ? Math.round(d.distance_m * 100) + " cm" : d.distance_m.toFixed(1) + " m"}` : "--";
+  $("ltstate").textContent = label; $("ltstate").style.color = col;
+  // signal over the last 60 s
+  const W = 1000, H = 140, yOf = (r) => 10 + (Math.max(-90, Math.min(-10, r)) + 10) / -80 * (H - 20), xOf = (ago) => W + ago / 60 * W;
+  let sp = "";
+  for (const r of [-20, -40, -60, -80]) sp += `<line x1="0" y1="${yOf(r)}" x2="${W}" y2="${yOf(r)}" stroke="#c9ceda"/><text x="6" y="${yOf(r) - 3}" font-size="11" fill="#8a90a0">${r} dBm</text>`;
+  sp += `<line x1="0" y1="${yOf(d.threshold_dbm)}" x2="${W}" y2="${yOf(d.threshold_dbm)}" stroke="#ED1C24" stroke-width="2" stroke-dasharray="8 6"/>`;
+  if (d.history.length > 1) sp += `<polyline fill="none" stroke="#2563EB" stroke-width="3" points="${d.history.map(([a, r]) => `${xOf(a).toFixed(1)},${yOf(r).toFixed(1)}`).join(" ")}"/>`;
+  $("ltspark").innerHTML = sp;
+  $("ltevents").innerHTML = d.events.length ? d.events.map(e => `<div>${e.ago_s} s ago: ${esc(e.text)}</div>`).join("") : "Nothing yet.";
+}
 async function scenario(id) {
   const sc = L.scenarios.find(s => s.id === id);
   $("busy").textContent = "Jumping to: " + sc.title + "..."; $("busy").classList.add("on");

@@ -9,8 +9,9 @@ server.py - the web server (FastAPI). Everything runs on this laptop; no interne
   /api/passenger?booking=..&plate=..  passenger view: only their own bag
   POST /api/control                 play / pause / speed / jump to a scenario / restart
   POST /api/action                  staff buttons: pull, approve, security, recover, ack
-  POST /api/live/checkin            check in the live bag with the real ESP32 tag
-  POST /api/live/near               "bring the tag to the loader" (button fallback if Bluetooth fails)
+  GET  /api/livetag                 the real ESP32: signal, rough distance, too far or not
+  POST /api/livetag/threshold       change the "too far" signal level (default -50 dBm)
+  POST /api/live/beep               Test beep / Stop buttons for the real ESP32
 
 The simulation clock runs in a background task. In real mode, real_ble.py scans the laptop's
 Bluetooth for the ESP32 tag and sends it beep/flash commands.
@@ -27,6 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .layout import ROOT
+from .livetag import LiveTagMonitor
 from .sim import LIVE_RECEIVER, Simulation
 
 STATIC = ROOT / "static"
@@ -50,9 +52,11 @@ async def startup():
     state["loop"] = asyncio.get_running_loop()
     state["speed"] = CONFIG["speed"]
     state["sim"] = Simulation(smoothing=CONFIG["smoothing"])
+    state["live"] = LiveTagMonitor(log=lambda m: print(m, flush=True))
     if CONFIG["mode"] == "real":
         await start_real_ble()
     asyncio.create_task(clock_loop())
+    asyncio.create_task(state["live"].run())
     threading.Thread(target=_build_checkpoints, daemon=True).start()
 
 
@@ -72,13 +76,13 @@ async def start_real_ble():
     from . import tagcrypto
     from .real_ble import RealBLE
     keys = tagcrypto.load_keys(ROOT / "data" / "tag_keys.json")
-    s = sim()
-    ble = RealBLE(LIVE_RECEIVER, keys, on_sighting=s.add_real_sighting,
+    # The real ESP32 feeds the "stay near the checkpoint" monitor (livetag.py) only.
+    # The simulated airport keeps running on simulated tags.
+    monitor = state["live"]
+    ble = RealBLE(LIVE_RECEIVER, keys, on_sighting=monitor.on_sighting,
                   log=lambda m: print(m, flush=True))
     state["ble"] = ble
-    s.real = ble
-    loop = state["loop"]
-    s.on_tag_command = lambda serial, mode: asyncio.run_coroutine_threadsafe(ble.set_alert(serial, mode), loop)
+    monitor.ble = ble
     await ble.start()
 
 
@@ -274,30 +278,27 @@ def action(body: dict):
     return {"ok": True}
 
 
-@app.post("/api/live/checkin")
-def live_checkin(body: dict):
-    gate = body.get("gate", "GA2")
-    with lock:
-        bid = sim().live_checkin(gate)
-    state["follow"] = bid
-    state["playing"] = True  # a paused clock would freeze the live bag
-    if CONFIG["mode"] == "real":
-        state["speed"] = 1.0  # real tag = real time
-    return {"ok": True, "bag": bid}
+# ---------------------------------------------------------------------- live ESP32 tag
+@app.get("/api/livetag")
+def livetag():
+    """Signal strength, rough distance and state of the real ESP32 (see livetag.py)."""
+    return state["live"].status()
 
 
-@app.post("/api/live/near")
-def live_near():
-    with lock:
-        sim().live_at_loader()
+@app.post("/api/livetag/threshold")
+def livetag_threshold(body: dict):
+    try:
+        state["live"].set_threshold(float(body.get("dbm", -50)))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "dbm must be a number")
     return {"ok": True}
 
 
 @app.post("/api/live/beep")
 async def live_beep(body: dict):
-    """Manual test of the real tag: mode 3 = locate (blue + chirps), 0 = normal."""
-    ble = state["ble"]
-    if not ble:
+    """Test beep (mode 3 = blue blinks + chirps) and Stop (mode 0 = normal)."""
+    if not state["ble"]:
         return {"ok": False, "error": "Not in real mode (start with: python run.py --mode real)"}
-    ok = await ble.set_alert("TAG-0001", int(body.get("mode", 3)))
-    return {"ok": ok, "status": ble.status.get("last_write")}
+    mode = 0 if int(body.get("mode", 3)) == 0 else 3
+    ok = await state["live"].manual(mode)
+    return {"ok": ok, "status": state["ble"].status.get("last_write")}

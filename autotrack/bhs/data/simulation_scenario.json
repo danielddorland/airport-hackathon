@@ -1,0 +1,4932 @@
+{
+  "simulation": {
+    "total_ticks": 3600,
+    "description": "Airport BHS 1-Hour Operational Stress Scenario. 3,600 ticks with procedurally generated waves and automated strategic failures."
+  },
+  "phases": [
+    {
+      "name": "warm_up",
+      "start_tick": 1,
+      "end_tick": 300
+    },
+    {
+      "name": "first_pressure",
+      "start_tick": 301,
+      "end_tick": 900
+    },
+    {
+      "name": "sustained_load",
+      "start_tick": 901,
+      "end_tick": 2100
+    },
+    {
+      "name": "crisis_peak",
+      "start_tick": 2101,
+      "end_tick": 3000
+    },
+    {
+      "name": "wind_down",
+      "start_tick": 3001,
+      "end_tick": 3600
+    }
+  ],
+  "bags": [
+    {
+      "bag_id": "B0001",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 10
+    },
+    {
+      "bag_id": "B0002",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 16
+    },
+    {
+      "bag_id": "B0003",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 32,
+      "deadline_tick": 77
+    },
+    {
+      "bag_id": "B0004",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 38
+    },
+    {
+      "bag_id": "B0005",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 69,
+      "deadline_tick": 121
+    },
+    {
+      "bag_id": "B0006",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 72,
+      "deadline_tick": 120
+    },
+    {
+      "bag_id": "B0007",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 89,
+      "deadline_tick": 153
+    },
+    {
+      "bag_id": "B0008",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 99
+    },
+    {
+      "bag_id": "B0009",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 126,
+      "deadline_tick": 184
+    },
+    {
+      "bag_id": "B0010",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 147,
+      "deadline_tick": 193
+    },
+    {
+      "bag_id": "B0011",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 148
+    },
+    {
+      "bag_id": "B0012",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 164
+    },
+    {
+      "bag_id": "B0013",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 200,
+      "deadline_tick": 251
+    },
+    {
+      "bag_id": "B0014",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 203,
+      "deadline_tick": 268
+    },
+    {
+      "bag_id": "B0015",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 205
+    },
+    {
+      "bag_id": "B0016",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 214
+    },
+    {
+      "bag_id": "B0017",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 238
+    },
+    {
+      "bag_id": "B0018",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 279,
+      "deadline_tick": 340
+    },
+    {
+      "bag_id": "B0019",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 324
+    },
+    {
+      "bag_id": "B0020",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 328
+    },
+    {
+      "bag_id": "B0021",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 331,
+      "deadline_tick": 386
+    },
+    {
+      "bag_id": "B0022",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 347
+    },
+    {
+      "bag_id": "B0023",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 354
+    },
+    {
+      "bag_id": "B0024",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 357
+    },
+    {
+      "bag_id": "B0025",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 359
+    },
+    {
+      "bag_id": "B0026",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 366
+    },
+    {
+      "bag_id": "B0027",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 372
+    },
+    {
+      "bag_id": "B0028",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 375
+    },
+    {
+      "bag_id": "B0029",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 379
+    },
+    {
+      "bag_id": "B0030",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 380,
+      "deadline_tick": 438
+    },
+    {
+      "bag_id": "B0031",
+      "intake_node": "IB2",
+      "destination_gate": "GA4",
+      "release_tick": 382
+    },
+    {
+      "bag_id": "B0032",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 386,
+      "deadline_tick": 436
+    },
+    {
+      "bag_id": "B0033",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 389
+    },
+    {
+      "bag_id": "B0034",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 402
+    },
+    {
+      "bag_id": "B0035",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 404
+    },
+    {
+      "bag_id": "B0036",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 405
+    },
+    {
+      "bag_id": "B0037",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 407,
+      "deadline_tick": 453
+    },
+    {
+      "bag_id": "B0038",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 439
+    },
+    {
+      "bag_id": "B0039",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 442
+    },
+    {
+      "bag_id": "B0040",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 464,
+      "deadline_tick": 525
+    },
+    {
+      "bag_id": "B0041",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 467,
+      "deadline_tick": 523
+    },
+    {
+      "bag_id": "B0042",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 470
+    },
+    {
+      "bag_id": "B0043",
+      "intake_node": "IA1",
+      "destination_gate": "GB4",
+      "release_tick": 490
+    },
+    {
+      "bag_id": "B0044",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 494,
+      "deadline_tick": 539
+    },
+    {
+      "bag_id": "B0045",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 496,
+      "deadline_tick": 558
+    },
+    {
+      "bag_id": "B0046",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 497,
+      "deadline_tick": 557
+    },
+    {
+      "bag_id": "B0047",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 506,
+      "deadline_tick": 571
+    },
+    {
+      "bag_id": "B0048",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 508,
+      "deadline_tick": 556
+    },
+    {
+      "bag_id": "B0049",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 509,
+      "deadline_tick": 560
+    },
+    {
+      "bag_id": "B0050",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 533
+    },
+    {
+      "bag_id": "B0051",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 563,
+      "deadline_tick": 621
+    },
+    {
+      "bag_id": "B0052",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 566,
+      "deadline_tick": 614
+    },
+    {
+      "bag_id": "B0053",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 570,
+      "deadline_tick": 630
+    },
+    {
+      "bag_id": "B0054",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 588,
+      "deadline_tick": 651
+    },
+    {
+      "bag_id": "B0055",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 598
+    },
+    {
+      "bag_id": "B0056",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 607,
+      "deadline_tick": 656
+    },
+    {
+      "bag_id": "B0057",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 619,
+      "deadline_tick": 678
+    },
+    {
+      "bag_id": "B0058",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 622
+    },
+    {
+      "bag_id": "B0059",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 626
+    },
+    {
+      "bag_id": "B0060",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 632
+    },
+    {
+      "bag_id": "B0061",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 658,
+      "deadline_tick": 717
+    },
+    {
+      "bag_id": "B0062",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 664,
+      "deadline_tick": 725
+    },
+    {
+      "bag_id": "B0063",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 677
+    },
+    {
+      "bag_id": "B0064",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 697
+    },
+    {
+      "bag_id": "B0065",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 702
+    },
+    {
+      "bag_id": "B0066",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 713,
+      "deadline_tick": 777
+    },
+    {
+      "bag_id": "B0067",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 742
+    },
+    {
+      "bag_id": "B0068",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 752
+    },
+    {
+      "bag_id": "B0069",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 757,
+      "deadline_tick": 822
+    },
+    {
+      "bag_id": "B0070",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 759
+    },
+    {
+      "bag_id": "B0071",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 781
+    },
+    {
+      "bag_id": "B0072",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 803,
+      "deadline_tick": 862
+    },
+    {
+      "bag_id": "B0073",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 818,
+      "deadline_tick": 874
+    },
+    {
+      "bag_id": "B0074",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 821
+    },
+    {
+      "bag_id": "B0075",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 829,
+      "deadline_tick": 893
+    },
+    {
+      "bag_id": "B0076",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 842
+    },
+    {
+      "bag_id": "B0077",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 847
+    },
+    {
+      "bag_id": "B0078",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 864
+    },
+    {
+      "bag_id": "B0079",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 866
+    },
+    {
+      "bag_id": "B0080",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 871
+    },
+    {
+      "bag_id": "B0081",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 872
+    },
+    {
+      "bag_id": "B0082",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 880,
+      "deadline_tick": 927
+    },
+    {
+      "bag_id": "B0083",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 882,
+      "deadline_tick": 929
+    },
+    {
+      "bag_id": "B0084",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 890
+    },
+    {
+      "bag_id": "B0085",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 900
+    },
+    {
+      "bag_id": "B0086",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 903
+    },
+    {
+      "bag_id": "B0087",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 911
+    },
+    {
+      "bag_id": "B0088",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 913,
+      "deadline_tick": 959
+    },
+    {
+      "bag_id": "B0089",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 915
+    },
+    {
+      "bag_id": "B0090",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 921,
+      "deadline_tick": 972
+    },
+    {
+      "bag_id": "B0091",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 925,
+      "deadline_tick": 990
+    },
+    {
+      "bag_id": "B0092",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 926
+    },
+    {
+      "bag_id": "B0093",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 929
+    },
+    {
+      "bag_id": "B0094",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 933
+    },
+    {
+      "bag_id": "B0095",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 934
+    },
+    {
+      "bag_id": "B0096",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 937,
+      "deadline_tick": 987
+    },
+    {
+      "bag_id": "B0097",
+      "intake_node": "IB2",
+      "destination_gate": "GA4",
+      "release_tick": 944,
+      "deadline_tick": 1007
+    },
+    {
+      "bag_id": "B0098",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 947
+    },
+    {
+      "bag_id": "B0099",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 948
+    },
+    {
+      "bag_id": "B0100",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 960
+    },
+    {
+      "bag_id": "B0101",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 965
+    },
+    {
+      "bag_id": "B0102",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 968
+    },
+    {
+      "bag_id": "B0103",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 969
+    },
+    {
+      "bag_id": "B0104",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 975
+    },
+    {
+      "bag_id": "B0105",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 984,
+      "deadline_tick": 1036
+    },
+    {
+      "bag_id": "B0106",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 993,
+      "deadline_tick": 1053
+    },
+    {
+      "bag_id": "B0107",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 995
+    },
+    {
+      "bag_id": "B0108",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1002
+    },
+    {
+      "bag_id": "B0109",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1011,
+      "deadline_tick": 1060
+    },
+    {
+      "bag_id": "B0110",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1014
+    },
+    {
+      "bag_id": "B0111",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1017
+    },
+    {
+      "bag_id": "B0112",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1018
+    },
+    {
+      "bag_id": "B0113",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1021
+    },
+    {
+      "bag_id": "B0114",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1023
+    },
+    {
+      "bag_id": "B0115",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1026
+    },
+    {
+      "bag_id": "B0116",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1027,
+      "deadline_tick": 1083
+    },
+    {
+      "bag_id": "B0117",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1033
+    },
+    {
+      "bag_id": "B0118",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1034
+    },
+    {
+      "bag_id": "B0119",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 1037,
+      "deadline_tick": 1098
+    },
+    {
+      "bag_id": "B0120",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1045,
+      "deadline_tick": 1103
+    },
+    {
+      "bag_id": "B0121",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1047
+    },
+    {
+      "bag_id": "B0122",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1049,
+      "deadline_tick": 1114
+    },
+    {
+      "bag_id": "B0123",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 1055,
+      "deadline_tick": 1101
+    },
+    {
+      "bag_id": "B0124",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1058,
+      "deadline_tick": 1120
+    },
+    {
+      "bag_id": "B0125",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1064
+    },
+    {
+      "bag_id": "B0126",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1069,
+      "deadline_tick": 1120
+    },
+    {
+      "bag_id": "B0127",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1070,
+      "deadline_tick": 1132
+    },
+    {
+      "bag_id": "B0128",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 1073
+    },
+    {
+      "bag_id": "B0129",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1084,
+      "deadline_tick": 1144
+    },
+    {
+      "bag_id": "B0130",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1088
+    },
+    {
+      "bag_id": "B0131",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1089
+    },
+    {
+      "bag_id": "B0132",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1099,
+      "deadline_tick": 1149
+    },
+    {
+      "bag_id": "B0133",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1116,
+      "deadline_tick": 1177
+    },
+    {
+      "bag_id": "B0134",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1118
+    },
+    {
+      "bag_id": "B0135",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1122
+    },
+    {
+      "bag_id": "B0136",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1136,
+      "deadline_tick": 1192
+    },
+    {
+      "bag_id": "B0137",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1137,
+      "deadline_tick": 1193
+    },
+    {
+      "bag_id": "B0138",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1140
+    },
+    {
+      "bag_id": "B0139",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1142,
+      "deadline_tick": 1207
+    },
+    {
+      "bag_id": "B0140",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 1145,
+      "deadline_tick": 1193
+    },
+    {
+      "bag_id": "B0141",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1147,
+      "deadline_tick": 1205
+    },
+    {
+      "bag_id": "B0142",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 1148
+    },
+    {
+      "bag_id": "B0143",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1154
+    },
+    {
+      "bag_id": "B0144",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1155
+    },
+    {
+      "bag_id": "B0145",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 1157
+    },
+    {
+      "bag_id": "B0146",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1160,
+      "deadline_tick": 1225
+    },
+    {
+      "bag_id": "B0147",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 1161
+    },
+    {
+      "bag_id": "B0148",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1169
+    },
+    {
+      "bag_id": "B0149",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 1172
+    },
+    {
+      "bag_id": "B0150",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 1182
+    },
+    {
+      "bag_id": "B0151",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1185
+    },
+    {
+      "bag_id": "B0152",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1193
+    },
+    {
+      "bag_id": "B0153",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1201
+    },
+    {
+      "bag_id": "B0154",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1203
+    },
+    {
+      "bag_id": "B0155",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1210
+    },
+    {
+      "bag_id": "B0156",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1219,
+      "deadline_tick": 1283
+    },
+    {
+      "bag_id": "B0157",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1223
+    },
+    {
+      "bag_id": "B0158",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1225,
+      "deadline_tick": 1272
+    },
+    {
+      "bag_id": "B0159",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1229
+    },
+    {
+      "bag_id": "B0160",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1233
+    },
+    {
+      "bag_id": "B0161",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1238
+    },
+    {
+      "bag_id": "B0162",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 1249,
+      "deadline_tick": 1314
+    },
+    {
+      "bag_id": "B0163",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1251
+    },
+    {
+      "bag_id": "B0164",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1253
+    },
+    {
+      "bag_id": "B0165",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1256,
+      "deadline_tick": 1304
+    },
+    {
+      "bag_id": "B0166",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1265
+    },
+    {
+      "bag_id": "B0167",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1266,
+      "deadline_tick": 1323
+    },
+    {
+      "bag_id": "B0168",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1268
+    },
+    {
+      "bag_id": "B0169",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 1272
+    },
+    {
+      "bag_id": "B0170",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1274
+    },
+    {
+      "bag_id": "B0171",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1276,
+      "deadline_tick": 1339
+    },
+    {
+      "bag_id": "B0172",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1287,
+      "deadline_tick": 1333
+    },
+    {
+      "bag_id": "B0173",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1293,
+      "deadline_tick": 1356
+    },
+    {
+      "bag_id": "B0174",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1296
+    },
+    {
+      "bag_id": "B0175",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1297
+    },
+    {
+      "bag_id": "B0176",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1303
+    },
+    {
+      "bag_id": "B0177",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1306
+    },
+    {
+      "bag_id": "B0178",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1307
+    },
+    {
+      "bag_id": "B0179",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1311
+    },
+    {
+      "bag_id": "B0180",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1315,
+      "deadline_tick": 1377
+    },
+    {
+      "bag_id": "B0181",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1319,
+      "deadline_tick": 1382
+    },
+    {
+      "bag_id": "B0182",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1320,
+      "deadline_tick": 1381
+    },
+    {
+      "bag_id": "B0183",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1324,
+      "deadline_tick": 1373
+    },
+    {
+      "bag_id": "B0184",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1335
+    },
+    {
+      "bag_id": "B0185",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1338
+    },
+    {
+      "bag_id": "B0186",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 1339
+    },
+    {
+      "bag_id": "B0187",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1340
+    },
+    {
+      "bag_id": "B0188",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1341,
+      "deadline_tick": 1400
+    },
+    {
+      "bag_id": "B0189",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1345,
+      "deadline_tick": 1394
+    },
+    {
+      "bag_id": "B0190",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1352
+    },
+    {
+      "bag_id": "B0191",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1355,
+      "deadline_tick": 1405
+    },
+    {
+      "bag_id": "B0192",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1356,
+      "deadline_tick": 1415
+    },
+    {
+      "bag_id": "B0193",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1358
+    },
+    {
+      "bag_id": "B0194",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 1366
+    },
+    {
+      "bag_id": "B0195",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1383,
+      "deadline_tick": 1441
+    },
+    {
+      "bag_id": "B0196",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1386
+    },
+    {
+      "bag_id": "B0197",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1392,
+      "deadline_tick": 1454
+    },
+    {
+      "bag_id": "B0198",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1394
+    },
+    {
+      "bag_id": "B0199",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1399,
+      "deadline_tick": 1453
+    },
+    {
+      "bag_id": "B0200",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1408,
+      "deadline_tick": 1464
+    },
+    {
+      "bag_id": "B0201",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1415
+    },
+    {
+      "bag_id": "B0202",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1416
+    },
+    {
+      "bag_id": "B0203",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1423
+    },
+    {
+      "bag_id": "B0204",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1430,
+      "deadline_tick": 1476
+    },
+    {
+      "bag_id": "B0205",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 1434
+    },
+    {
+      "bag_id": "B0206",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1438
+    },
+    {
+      "bag_id": "B0207",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1439
+    },
+    {
+      "bag_id": "B0208",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1450,
+      "deadline_tick": 1503
+    },
+    {
+      "bag_id": "B0209",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1452,
+      "deadline_tick": 1506
+    },
+    {
+      "bag_id": "B0210",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1460,
+      "deadline_tick": 1517
+    },
+    {
+      "bag_id": "B0211",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1467,
+      "deadline_tick": 1530
+    },
+    {
+      "bag_id": "B0212",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1469,
+      "deadline_tick": 1519
+    },
+    {
+      "bag_id": "B0213",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1476,
+      "deadline_tick": 1534
+    },
+    {
+      "bag_id": "B0214",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1481
+    },
+    {
+      "bag_id": "B0215",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1488
+    },
+    {
+      "bag_id": "B0216",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1492
+    },
+    {
+      "bag_id": "B0217",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1494,
+      "deadline_tick": 1544
+    },
+    {
+      "bag_id": "B0218",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1498,
+      "deadline_tick": 1563
+    },
+    {
+      "bag_id": "B0219",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1502
+    },
+    {
+      "bag_id": "B0220",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1508
+    },
+    {
+      "bag_id": "B0221",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1510
+    },
+    {
+      "bag_id": "B0222",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1511
+    },
+    {
+      "bag_id": "B0223",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1514,
+      "deadline_tick": 1569
+    },
+    {
+      "bag_id": "B0224",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1516
+    },
+    {
+      "bag_id": "B0225",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1532,
+      "deadline_tick": 1587
+    },
+    {
+      "bag_id": "B0226",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 1534
+    },
+    {
+      "bag_id": "B0227",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 1536,
+      "deadline_tick": 1583
+    },
+    {
+      "bag_id": "B0228",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1541
+    },
+    {
+      "bag_id": "B0229",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1543,
+      "deadline_tick": 1603
+    },
+    {
+      "bag_id": "B0230",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1544
+    },
+    {
+      "bag_id": "B0231",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1546
+    },
+    {
+      "bag_id": "B0232",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1549
+    },
+    {
+      "bag_id": "B0233",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1550
+    },
+    {
+      "bag_id": "B0234",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1552,
+      "deadline_tick": 1615
+    },
+    {
+      "bag_id": "B0235",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1553
+    },
+    {
+      "bag_id": "B0236",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1555,
+      "deadline_tick": 1604
+    },
+    {
+      "bag_id": "B0237",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1557,
+      "deadline_tick": 1612
+    },
+    {
+      "bag_id": "B0238",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 1559
+    },
+    {
+      "bag_id": "B0239",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1560
+    },
+    {
+      "bag_id": "B0240",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1562
+    },
+    {
+      "bag_id": "B0241",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1564
+    },
+    {
+      "bag_id": "B0242",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1565
+    },
+    {
+      "bag_id": "B0243",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1567
+    },
+    {
+      "bag_id": "B0244",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1571
+    },
+    {
+      "bag_id": "B0245",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1572
+    },
+    {
+      "bag_id": "B0246",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1577,
+      "deadline_tick": 1629
+    },
+    {
+      "bag_id": "B0247",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1578,
+      "deadline_tick": 1631
+    },
+    {
+      "bag_id": "B0248",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1581,
+      "deadline_tick": 1636
+    },
+    {
+      "bag_id": "B0249",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 1588
+    },
+    {
+      "bag_id": "B0250",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1593,
+      "deadline_tick": 1652
+    },
+    {
+      "bag_id": "B0251",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1595
+    },
+    {
+      "bag_id": "B0252",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1598
+    },
+    {
+      "bag_id": "B0253",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1601
+    },
+    {
+      "bag_id": "B0254",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1602,
+      "deadline_tick": 1662
+    },
+    {
+      "bag_id": "B0255",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1603
+    },
+    {
+      "bag_id": "B0256",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 1608
+    },
+    {
+      "bag_id": "B0257",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1619
+    },
+    {
+      "bag_id": "B0258",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1620,
+      "deadline_tick": 1671
+    },
+    {
+      "bag_id": "B0259",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1622
+    },
+    {
+      "bag_id": "B0260",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1629
+    },
+    {
+      "bag_id": "B0261",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 1632,
+      "deadline_tick": 1694
+    },
+    {
+      "bag_id": "B0262",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1644
+    },
+    {
+      "bag_id": "B0263",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1664
+    },
+    {
+      "bag_id": "B0264",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1669
+    },
+    {
+      "bag_id": "B0265",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1683
+    },
+    {
+      "bag_id": "B0266",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 1686,
+      "deadline_tick": 1744
+    },
+    {
+      "bag_id": "B0267",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1689,
+      "deadline_tick": 1745
+    },
+    {
+      "bag_id": "B0268",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 1690,
+      "deadline_tick": 1750
+    },
+    {
+      "bag_id": "B0269",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1691,
+      "deadline_tick": 1744
+    },
+    {
+      "bag_id": "B0270",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1696,
+      "deadline_tick": 1751
+    },
+    {
+      "bag_id": "B0271",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 1699
+    },
+    {
+      "bag_id": "B0272",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1700,
+      "deadline_tick": 1760
+    },
+    {
+      "bag_id": "B0273",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1701
+    },
+    {
+      "bag_id": "B0274",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1703,
+      "deadline_tick": 1748
+    },
+    {
+      "bag_id": "B0275",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1706
+    },
+    {
+      "bag_id": "B0276",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1714,
+      "deadline_tick": 1777
+    },
+    {
+      "bag_id": "B0277",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1717
+    },
+    {
+      "bag_id": "B0278",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1719,
+      "deadline_tick": 1780
+    },
+    {
+      "bag_id": "B0279",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 1723
+    },
+    {
+      "bag_id": "B0280",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1729,
+      "deadline_tick": 1789
+    },
+    {
+      "bag_id": "B0281",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1730
+    },
+    {
+      "bag_id": "B0282",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1732
+    },
+    {
+      "bag_id": "B0283",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1747,
+      "deadline_tick": 1799
+    },
+    {
+      "bag_id": "B0284",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 1748
+    },
+    {
+      "bag_id": "B0285",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1757,
+      "deadline_tick": 1803
+    },
+    {
+      "bag_id": "B0286",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1767
+    },
+    {
+      "bag_id": "B0287",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1775
+    },
+    {
+      "bag_id": "B0288",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1778,
+      "deadline_tick": 1833
+    },
+    {
+      "bag_id": "B0289",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1785,
+      "deadline_tick": 1836
+    },
+    {
+      "bag_id": "B0290",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1786,
+      "deadline_tick": 1848
+    },
+    {
+      "bag_id": "B0291",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 1787,
+      "deadline_tick": 1844
+    },
+    {
+      "bag_id": "B0292",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 1791
+    },
+    {
+      "bag_id": "B0293",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1795,
+      "deadline_tick": 1841
+    },
+    {
+      "bag_id": "B0294",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1798
+    },
+    {
+      "bag_id": "B0295",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1800,
+      "deadline_tick": 1845
+    },
+    {
+      "bag_id": "B0296",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1802
+    },
+    {
+      "bag_id": "B0297",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1806
+    },
+    {
+      "bag_id": "B0298",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 1808
+    },
+    {
+      "bag_id": "B0299",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 1811
+    },
+    {
+      "bag_id": "B0300",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1821,
+      "deadline_tick": 1867
+    },
+    {
+      "bag_id": "B0301",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1837
+    },
+    {
+      "bag_id": "B0302",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 1840,
+      "deadline_tick": 1886
+    },
+    {
+      "bag_id": "B0303",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 1844
+    },
+    {
+      "bag_id": "B0304",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1853
+    },
+    {
+      "bag_id": "B0305",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1854,
+      "deadline_tick": 1916
+    },
+    {
+      "bag_id": "B0306",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1861
+    },
+    {
+      "bag_id": "B0307",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 1868,
+      "deadline_tick": 1913
+    },
+    {
+      "bag_id": "B0308",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1870,
+      "deadline_tick": 1919
+    },
+    {
+      "bag_id": "B0309",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1883
+    },
+    {
+      "bag_id": "B0310",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1890,
+      "deadline_tick": 1952
+    },
+    {
+      "bag_id": "B0311",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1892,
+      "deadline_tick": 1953
+    },
+    {
+      "bag_id": "B0312",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1899
+    },
+    {
+      "bag_id": "B0313",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 1902
+    },
+    {
+      "bag_id": "B0314",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1905
+    },
+    {
+      "bag_id": "B0315",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 1913
+    },
+    {
+      "bag_id": "B0316",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 1922,
+      "deadline_tick": 1986
+    },
+    {
+      "bag_id": "B0317",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1923
+    },
+    {
+      "bag_id": "B0318",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1924
+    },
+    {
+      "bag_id": "B0319",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 1926,
+      "deadline_tick": 1985
+    },
+    {
+      "bag_id": "B0320",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1930
+    },
+    {
+      "bag_id": "B0321",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 1931
+    },
+    {
+      "bag_id": "B0322",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1932,
+      "deadline_tick": 1979
+    },
+    {
+      "bag_id": "B0323",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1934
+    },
+    {
+      "bag_id": "B0324",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 1937
+    },
+    {
+      "bag_id": "B0325",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1940,
+      "deadline_tick": 2002
+    },
+    {
+      "bag_id": "B0326",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1941
+    },
+    {
+      "bag_id": "B0327",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 1943,
+      "deadline_tick": 1991
+    },
+    {
+      "bag_id": "B0328",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 1949,
+      "deadline_tick": 1997
+    },
+    {
+      "bag_id": "B0329",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 1957,
+      "deadline_tick": 2012
+    },
+    {
+      "bag_id": "B0330",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 1961
+    },
+    {
+      "bag_id": "B0331",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1973
+    },
+    {
+      "bag_id": "B0332",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1977
+    },
+    {
+      "bag_id": "B0333",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 1978,
+      "deadline_tick": 2031
+    },
+    {
+      "bag_id": "B0334",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 1980
+    },
+    {
+      "bag_id": "B0335",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 1982,
+      "deadline_tick": 2041
+    },
+    {
+      "bag_id": "B0336",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 1986
+    },
+    {
+      "bag_id": "B0337",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 1987
+    },
+    {
+      "bag_id": "B0338",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 1990
+    },
+    {
+      "bag_id": "B0339",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2005
+    },
+    {
+      "bag_id": "B0340",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2008,
+      "deadline_tick": 2065
+    },
+    {
+      "bag_id": "B0341",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2010,
+      "deadline_tick": 2057
+    },
+    {
+      "bag_id": "B0342",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2011
+    },
+    {
+      "bag_id": "B0343",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2017
+    },
+    {
+      "bag_id": "B0344",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2020
+    },
+    {
+      "bag_id": "B0345",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2023
+    },
+    {
+      "bag_id": "B0346",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2024,
+      "deadline_tick": 2079
+    },
+    {
+      "bag_id": "B0347",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2026
+    },
+    {
+      "bag_id": "B0348",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2027
+    },
+    {
+      "bag_id": "B0349",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2028,
+      "deadline_tick": 2074
+    },
+    {
+      "bag_id": "B0350",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2032
+    },
+    {
+      "bag_id": "B0351",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2034
+    },
+    {
+      "bag_id": "B0352",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2039,
+      "deadline_tick": 2085
+    },
+    {
+      "bag_id": "B0353",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2043,
+      "deadline_tick": 2094
+    },
+    {
+      "bag_id": "B0354",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2050,
+      "deadline_tick": 2098
+    },
+    {
+      "bag_id": "B0355",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 2051
+    },
+    {
+      "bag_id": "B0356",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2054,
+      "deadline_tick": 2103
+    },
+    {
+      "bag_id": "B0357",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2067,
+      "deadline_tick": 2119
+    },
+    {
+      "bag_id": "B0358",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2069
+    },
+    {
+      "bag_id": "B0359",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2073,
+      "deadline_tick": 2127
+    },
+    {
+      "bag_id": "B0360",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2075
+    },
+    {
+      "bag_id": "B0361",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2076,
+      "deadline_tick": 2141
+    },
+    {
+      "bag_id": "B0362",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2081,
+      "deadline_tick": 2142
+    },
+    {
+      "bag_id": "B0363",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 2086
+    },
+    {
+      "bag_id": "B0364",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2087
+    },
+    {
+      "bag_id": "B0365",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2093
+    },
+    {
+      "bag_id": "B0366",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2094
+    },
+    {
+      "bag_id": "B0367",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2095,
+      "deadline_tick": 2159
+    },
+    {
+      "bag_id": "B0368",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2102,
+      "deadline_tick": 2129
+    },
+    {
+      "bag_id": "B0369",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2103,
+      "deadline_tick": 2136
+    },
+    {
+      "bag_id": "B0370",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2105,
+      "deadline_tick": 2138
+    },
+    {
+      "bag_id": "B0371",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2110,
+      "deadline_tick": 2143
+    },
+    {
+      "bag_id": "B0372",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2115,
+      "deadline_tick": 2140
+    },
+    {
+      "bag_id": "B0373",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2118,
+      "deadline_tick": 2148
+    },
+    {
+      "bag_id": "B0374",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2120,
+      "deadline_tick": 2152
+    },
+    {
+      "bag_id": "B0375",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2121,
+      "deadline_tick": 2151
+    },
+    {
+      "bag_id": "B0376",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2122,
+      "deadline_tick": 2156
+    },
+    {
+      "bag_id": "B0377",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2125,
+      "deadline_tick": 2156
+    },
+    {
+      "bag_id": "B0378",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2126,
+      "deadline_tick": 2152
+    },
+    {
+      "bag_id": "B0379",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2127,
+      "deadline_tick": 2159
+    },
+    {
+      "bag_id": "B0380",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 2129,
+      "deadline_tick": 2154
+    },
+    {
+      "bag_id": "B0381",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2132,
+      "deadline_tick": 2161
+    },
+    {
+      "bag_id": "B0382",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2135,
+      "deadline_tick": 2170
+    },
+    {
+      "bag_id": "B0383",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2139,
+      "deadline_tick": 2169
+    },
+    {
+      "bag_id": "B0384",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2142,
+      "deadline_tick": 2169
+    },
+    {
+      "bag_id": "B0385",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2143,
+      "deadline_tick": 2173
+    },
+    {
+      "bag_id": "B0386",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2147,
+      "deadline_tick": 2175
+    },
+    {
+      "bag_id": "B0387",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2148,
+      "deadline_tick": 2175
+    },
+    {
+      "bag_id": "B0388",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2149,
+      "deadline_tick": 2181
+    },
+    {
+      "bag_id": "B0389",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2157,
+      "deadline_tick": 2190
+    },
+    {
+      "bag_id": "B0390",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2159,
+      "deadline_tick": 2191
+    },
+    {
+      "bag_id": "B0391",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2167,
+      "deadline_tick": 2195
+    },
+    {
+      "bag_id": "B0392",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2168,
+      "deadline_tick": 2194
+    },
+    {
+      "bag_id": "B0393",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2169,
+      "deadline_tick": 2200
+    },
+    {
+      "bag_id": "B0394",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2172,
+      "deadline_tick": 2197
+    },
+    {
+      "bag_id": "B0395",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2178,
+      "deadline_tick": 2208
+    },
+    {
+      "bag_id": "B0396",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2179,
+      "deadline_tick": 2211
+    },
+    {
+      "bag_id": "B0397",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2182,
+      "deadline_tick": 2210
+    },
+    {
+      "bag_id": "B0398",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2183,
+      "deadline_tick": 2210
+    },
+    {
+      "bag_id": "B0399",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2186,
+      "deadline_tick": 2217
+    },
+    {
+      "bag_id": "B0400",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2189,
+      "deadline_tick": 2219
+    },
+    {
+      "bag_id": "B0401",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2191,
+      "deadline_tick": 2220
+    },
+    {
+      "bag_id": "B0402",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2194,
+      "deadline_tick": 2227
+    },
+    {
+      "bag_id": "B0403",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2196,
+      "deadline_tick": 2224
+    },
+    {
+      "bag_id": "B0404",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2197,
+      "deadline_tick": 2228
+    },
+    {
+      "bag_id": "B0405",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2200,
+      "deadline_tick": 2225
+    },
+    {
+      "bag_id": "B0406",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 2201,
+      "deadline_tick": 2236
+    },
+    {
+      "bag_id": "B0407",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2202,
+      "deadline_tick": 2227
+    },
+    {
+      "bag_id": "B0408",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2204,
+      "deadline_tick": 2234
+    },
+    {
+      "bag_id": "B0409",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2207,
+      "deadline_tick": 2238
+    },
+    {
+      "bag_id": "B0410",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2212,
+      "deadline_tick": 2244
+    },
+    {
+      "bag_id": "B0411",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2213,
+      "deadline_tick": 2238
+    },
+    {
+      "bag_id": "B0412",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2214,
+      "deadline_tick": 2241
+    },
+    {
+      "bag_id": "B0413",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2216,
+      "deadline_tick": 2244
+    },
+    {
+      "bag_id": "B0414",
+      "intake_node": "IA1",
+      "destination_gate": "GB4",
+      "release_tick": 2218,
+      "deadline_tick": 2243
+    },
+    {
+      "bag_id": "B0415",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2219,
+      "deadline_tick": 2249
+    },
+    {
+      "bag_id": "B0416",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2220,
+      "deadline_tick": 2246
+    },
+    {
+      "bag_id": "B0417",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2231,
+      "deadline_tick": 2260
+    },
+    {
+      "bag_id": "B0418",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2232,
+      "deadline_tick": 2261
+    },
+    {
+      "bag_id": "B0419",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2233,
+      "deadline_tick": 2258
+    },
+    {
+      "bag_id": "B0420",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 2236,
+      "deadline_tick": 2269
+    },
+    {
+      "bag_id": "B0421",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2239,
+      "deadline_tick": 2273
+    },
+    {
+      "bag_id": "B0422",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2242,
+      "deadline_tick": 2271
+    },
+    {
+      "bag_id": "B0423",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2246,
+      "deadline_tick": 2279
+    },
+    {
+      "bag_id": "B0424",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2248,
+      "deadline_tick": 2277
+    },
+    {
+      "bag_id": "B0425",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 2249,
+      "deadline_tick": 2276
+    },
+    {
+      "bag_id": "B0426",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2252,
+      "deadline_tick": 2281
+    },
+    {
+      "bag_id": "B0427",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2253,
+      "deadline_tick": 2279
+    },
+    {
+      "bag_id": "B0428",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2255,
+      "deadline_tick": 2287
+    },
+    {
+      "bag_id": "B0429",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2257,
+      "deadline_tick": 2286
+    },
+    {
+      "bag_id": "B0430",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2261,
+      "deadline_tick": 2289
+    },
+    {
+      "bag_id": "B0431",
+      "intake_node": "IA1",
+      "destination_gate": "GB4",
+      "release_tick": 2262,
+      "deadline_tick": 2290
+    },
+    {
+      "bag_id": "B0432",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2264,
+      "deadline_tick": 2290
+    },
+    {
+      "bag_id": "B0433",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2267,
+      "deadline_tick": 2293
+    },
+    {
+      "bag_id": "B0434",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2269,
+      "deadline_tick": 2296
+    },
+    {
+      "bag_id": "B0435",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2274,
+      "deadline_tick": 2306
+    },
+    {
+      "bag_id": "B0436",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2275,
+      "deadline_tick": 2303
+    },
+    {
+      "bag_id": "B0437",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2276,
+      "deadline_tick": 2302
+    },
+    {
+      "bag_id": "B0438",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2279,
+      "deadline_tick": 2310
+    },
+    {
+      "bag_id": "B0439",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2286,
+      "deadline_tick": 2320
+    },
+    {
+      "bag_id": "B0440",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2290,
+      "deadline_tick": 2323
+    },
+    {
+      "bag_id": "B0441",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2292,
+      "deadline_tick": 2318
+    },
+    {
+      "bag_id": "B0442",
+      "intake_node": "IB2",
+      "destination_gate": "GA4",
+      "release_tick": 2293,
+      "deadline_tick": 2323
+    },
+    {
+      "bag_id": "B0443",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2297,
+      "deadline_tick": 2332
+    },
+    {
+      "bag_id": "B0444",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2298,
+      "deadline_tick": 2327
+    },
+    {
+      "bag_id": "B0445",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2303,
+      "deadline_tick": 2338
+    },
+    {
+      "bag_id": "B0446",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2308,
+      "deadline_tick": 2334
+    },
+    {
+      "bag_id": "B0447",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 2309,
+      "deadline_tick": 2341
+    },
+    {
+      "bag_id": "B0448",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 2312,
+      "deadline_tick": 2346
+    },
+    {
+      "bag_id": "B0449",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2313,
+      "deadline_tick": 2342
+    },
+    {
+      "bag_id": "B0450",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 2318,
+      "deadline_tick": 2344
+    },
+    {
+      "bag_id": "B0451",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2320,
+      "deadline_tick": 2354
+    },
+    {
+      "bag_id": "B0452",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2326,
+      "deadline_tick": 2357
+    },
+    {
+      "bag_id": "B0453",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2329,
+      "deadline_tick": 2362
+    },
+    {
+      "bag_id": "B0454",
+      "intake_node": "IB2",
+      "destination_gate": "GA4",
+      "release_tick": 2331,
+      "deadline_tick": 2359
+    },
+    {
+      "bag_id": "B0455",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2333,
+      "deadline_tick": 2358
+    },
+    {
+      "bag_id": "B0456",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2334,
+      "deadline_tick": 2361
+    },
+    {
+      "bag_id": "B0457",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2335,
+      "deadline_tick": 2367
+    },
+    {
+      "bag_id": "B0458",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2338,
+      "deadline_tick": 2365
+    },
+    {
+      "bag_id": "B0459",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2347,
+      "deadline_tick": 2377
+    },
+    {
+      "bag_id": "B0460",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2350,
+      "deadline_tick": 2375
+    },
+    {
+      "bag_id": "B0461",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2351,
+      "deadline_tick": 2378
+    },
+    {
+      "bag_id": "B0462",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2355,
+      "deadline_tick": 2382
+    },
+    {
+      "bag_id": "B0463",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 2359,
+      "deadline_tick": 2389
+    },
+    {
+      "bag_id": "B0464",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2360,
+      "deadline_tick": 2387
+    },
+    {
+      "bag_id": "B0465",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2363,
+      "deadline_tick": 2389
+    },
+    {
+      "bag_id": "B0466",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2365,
+      "deadline_tick": 2399
+    },
+    {
+      "bag_id": "B0467",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2369,
+      "deadline_tick": 2399
+    },
+    {
+      "bag_id": "B0468",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2375,
+      "deadline_tick": 2400
+    },
+    {
+      "bag_id": "B0469",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2380,
+      "deadline_tick": 2410
+    },
+    {
+      "bag_id": "B0470",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2385,
+      "deadline_tick": 2410
+    },
+    {
+      "bag_id": "B0471",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2390,
+      "deadline_tick": 2421
+    },
+    {
+      "bag_id": "B0472",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2397,
+      "deadline_tick": 2432
+    },
+    {
+      "bag_id": "B0473",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2401,
+      "deadline_tick": 2434
+    },
+    {
+      "bag_id": "B0474",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2405,
+      "deadline_tick": 2430
+    },
+    {
+      "bag_id": "B0475",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2406,
+      "deadline_tick": 2436
+    },
+    {
+      "bag_id": "B0476",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 2408,
+      "deadline_tick": 2437
+    },
+    {
+      "bag_id": "B0477",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2413,
+      "deadline_tick": 2446
+    },
+    {
+      "bag_id": "B0478",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2414,
+      "deadline_tick": 2444
+    },
+    {
+      "bag_id": "B0479",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2415,
+      "deadline_tick": 2450
+    },
+    {
+      "bag_id": "B0480",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2416,
+      "deadline_tick": 2442
+    },
+    {
+      "bag_id": "B0481",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2418,
+      "deadline_tick": 2453
+    },
+    {
+      "bag_id": "B0482",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 2423,
+      "deadline_tick": 2455
+    },
+    {
+      "bag_id": "B0483",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2424,
+      "deadline_tick": 2456
+    },
+    {
+      "bag_id": "B0484",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2427,
+      "deadline_tick": 2460
+    },
+    {
+      "bag_id": "B0485",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2429,
+      "deadline_tick": 2458
+    },
+    {
+      "bag_id": "B0486",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2431,
+      "deadline_tick": 2457
+    },
+    {
+      "bag_id": "B0487",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2434,
+      "deadline_tick": 2463
+    },
+    {
+      "bag_id": "B0488",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2435,
+      "deadline_tick": 2461
+    },
+    {
+      "bag_id": "B0489",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 2448,
+      "deadline_tick": 2475
+    },
+    {
+      "bag_id": "B0490",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2450,
+      "deadline_tick": 2482
+    },
+    {
+      "bag_id": "B0491",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2451,
+      "deadline_tick": 2485
+    },
+    {
+      "bag_id": "B0492",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2452,
+      "deadline_tick": 2481
+    },
+    {
+      "bag_id": "B0493",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2457,
+      "deadline_tick": 2484
+    },
+    {
+      "bag_id": "B0494",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 2458,
+      "deadline_tick": 2486
+    },
+    {
+      "bag_id": "B0495",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2460,
+      "deadline_tick": 2495
+    },
+    {
+      "bag_id": "B0496",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2461,
+      "deadline_tick": 2496
+    },
+    {
+      "bag_id": "B0497",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2463,
+      "deadline_tick": 2490
+    },
+    {
+      "bag_id": "B0498",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2465,
+      "deadline_tick": 2500
+    },
+    {
+      "bag_id": "B0499",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2466,
+      "deadline_tick": 2498
+    },
+    {
+      "bag_id": "B0500",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2469,
+      "deadline_tick": 2496
+    },
+    {
+      "bag_id": "B0501",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2471,
+      "deadline_tick": 2502
+    },
+    {
+      "bag_id": "B0502",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2472,
+      "deadline_tick": 2502
+    },
+    {
+      "bag_id": "B0503",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2474,
+      "deadline_tick": 2508
+    },
+    {
+      "bag_id": "B0504",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2477,
+      "deadline_tick": 2505
+    },
+    {
+      "bag_id": "B0505",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2481,
+      "deadline_tick": 2509
+    },
+    {
+      "bag_id": "B0506",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 2482,
+      "deadline_tick": 2512
+    },
+    {
+      "bag_id": "B0507",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2484,
+      "deadline_tick": 2509
+    },
+    {
+      "bag_id": "B0508",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2486,
+      "deadline_tick": 2511
+    },
+    {
+      "bag_id": "B0509",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2488,
+      "deadline_tick": 2519
+    },
+    {
+      "bag_id": "B0510",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2493,
+      "deadline_tick": 2521
+    },
+    {
+      "bag_id": "B0511",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2494,
+      "deadline_tick": 2522
+    },
+    {
+      "bag_id": "B0512",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2498,
+      "deadline_tick": 2528
+    },
+    {
+      "bag_id": "B0513",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2503,
+      "deadline_tick": 2531
+    },
+    {
+      "bag_id": "B0514",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2504,
+      "deadline_tick": 2533
+    },
+    {
+      "bag_id": "B0515",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 2505,
+      "deadline_tick": 2530
+    },
+    {
+      "bag_id": "B0516",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2506,
+      "deadline_tick": 2537
+    },
+    {
+      "bag_id": "B0517",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2508,
+      "deadline_tick": 2541
+    },
+    {
+      "bag_id": "B0518",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2514,
+      "deadline_tick": 2542
+    },
+    {
+      "bag_id": "B0519",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 2519,
+      "deadline_tick": 2551
+    },
+    {
+      "bag_id": "B0520",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2520,
+      "deadline_tick": 2555
+    },
+    {
+      "bag_id": "B0521",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2522,
+      "deadline_tick": 2550
+    },
+    {
+      "bag_id": "B0522",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2524,
+      "deadline_tick": 2553
+    },
+    {
+      "bag_id": "B0523",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 2525,
+      "deadline_tick": 2556
+    },
+    {
+      "bag_id": "B0524",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2527,
+      "deadline_tick": 2562
+    },
+    {
+      "bag_id": "B0525",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2528,
+      "deadline_tick": 2553
+    },
+    {
+      "bag_id": "B0526",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2530,
+      "deadline_tick": 2555
+    },
+    {
+      "bag_id": "B0527",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2533,
+      "deadline_tick": 2566
+    },
+    {
+      "bag_id": "B0528",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2534,
+      "deadline_tick": 2561
+    },
+    {
+      "bag_id": "B0529",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 2535,
+      "deadline_tick": 2569
+    },
+    {
+      "bag_id": "B0530",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2537,
+      "deadline_tick": 2564
+    },
+    {
+      "bag_id": "B0531",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2540,
+      "deadline_tick": 2573
+    },
+    {
+      "bag_id": "B0532",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2541,
+      "deadline_tick": 2566
+    },
+    {
+      "bag_id": "B0533",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 2543,
+      "deadline_tick": 2573
+    },
+    {
+      "bag_id": "B0534",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2545,
+      "deadline_tick": 2579
+    },
+    {
+      "bag_id": "B0535",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2546,
+      "deadline_tick": 2574
+    },
+    {
+      "bag_id": "B0536",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2548,
+      "deadline_tick": 2580
+    },
+    {
+      "bag_id": "B0537",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2549,
+      "deadline_tick": 2584
+    },
+    {
+      "bag_id": "B0538",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2551,
+      "deadline_tick": 2579
+    },
+    {
+      "bag_id": "B0539",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2552,
+      "deadline_tick": 2581
+    },
+    {
+      "bag_id": "B0540",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2555,
+      "deadline_tick": 2589
+    },
+    {
+      "bag_id": "B0541",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2558,
+      "deadline_tick": 2589
+    },
+    {
+      "bag_id": "B0542",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2559,
+      "deadline_tick": 2590
+    },
+    {
+      "bag_id": "B0543",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2562,
+      "deadline_tick": 2596
+    },
+    {
+      "bag_id": "B0544",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2565,
+      "deadline_tick": 2599
+    },
+    {
+      "bag_id": "B0545",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2568,
+      "deadline_tick": 2595
+    },
+    {
+      "bag_id": "B0546",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2572,
+      "deadline_tick": 2601
+    },
+    {
+      "bag_id": "B0547",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2577,
+      "deadline_tick": 2606
+    },
+    {
+      "bag_id": "B0548",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2580,
+      "deadline_tick": 2611
+    },
+    {
+      "bag_id": "B0549",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 2581,
+      "deadline_tick": 2607
+    },
+    {
+      "bag_id": "B0550",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2582,
+      "deadline_tick": 2608
+    },
+    {
+      "bag_id": "B0551",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2586,
+      "deadline_tick": 2614
+    },
+    {
+      "bag_id": "B0552",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2588,
+      "deadline_tick": 2614
+    },
+    {
+      "bag_id": "B0553",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 2591,
+      "deadline_tick": 2620
+    },
+    {
+      "bag_id": "B0554",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2592,
+      "deadline_tick": 2621
+    },
+    {
+      "bag_id": "B0555",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2597,
+      "deadline_tick": 2629
+    },
+    {
+      "bag_id": "B0556",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2599,
+      "deadline_tick": 2633
+    },
+    {
+      "bag_id": "B0557",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2600,
+      "deadline_tick": 2632
+    },
+    {
+      "bag_id": "B0558",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2603,
+      "deadline_tick": 2629
+    },
+    {
+      "bag_id": "B0559",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2607,
+      "deadline_tick": 2639
+    },
+    {
+      "bag_id": "B0560",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2608,
+      "deadline_tick": 2642
+    },
+    {
+      "bag_id": "B0561",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2610,
+      "deadline_tick": 2642
+    },
+    {
+      "bag_id": "B0562",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2611,
+      "deadline_tick": 2637
+    },
+    {
+      "bag_id": "B0563",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2615,
+      "deadline_tick": 2640
+    },
+    {
+      "bag_id": "B0564",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2616,
+      "deadline_tick": 2651
+    },
+    {
+      "bag_id": "B0565",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2617,
+      "deadline_tick": 2642
+    },
+    {
+      "bag_id": "B0566",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2619,
+      "deadline_tick": 2647
+    },
+    {
+      "bag_id": "B0567",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2623,
+      "deadline_tick": 2651
+    },
+    {
+      "bag_id": "B0568",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 2625,
+      "deadline_tick": 2656
+    },
+    {
+      "bag_id": "B0569",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2627,
+      "deadline_tick": 2653
+    },
+    {
+      "bag_id": "B0570",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2630,
+      "deadline_tick": 2660
+    },
+    {
+      "bag_id": "B0571",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2631,
+      "deadline_tick": 2662
+    },
+    {
+      "bag_id": "B0572",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 2634,
+      "deadline_tick": 2666
+    },
+    {
+      "bag_id": "B0573",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2635,
+      "deadline_tick": 2660
+    },
+    {
+      "bag_id": "B0574",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 2636,
+      "deadline_tick": 2663
+    },
+    {
+      "bag_id": "B0575",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2637,
+      "deadline_tick": 2670
+    },
+    {
+      "bag_id": "B0576",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2640,
+      "deadline_tick": 2672
+    },
+    {
+      "bag_id": "B0577",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2641,
+      "deadline_tick": 2674
+    },
+    {
+      "bag_id": "B0578",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2647,
+      "deadline_tick": 2682
+    },
+    {
+      "bag_id": "B0579",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 2656,
+      "deadline_tick": 2689
+    },
+    {
+      "bag_id": "B0580",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2661,
+      "deadline_tick": 2690
+    },
+    {
+      "bag_id": "B0581",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2663,
+      "deadline_tick": 2697
+    },
+    {
+      "bag_id": "B0582",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2666,
+      "deadline_tick": 2694
+    },
+    {
+      "bag_id": "B0583",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2670,
+      "deadline_tick": 2699
+    },
+    {
+      "bag_id": "B0584",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2677,
+      "deadline_tick": 2712
+    },
+    {
+      "bag_id": "B0585",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2682,
+      "deadline_tick": 2707
+    },
+    {
+      "bag_id": "B0586",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2683,
+      "deadline_tick": 2714
+    },
+    {
+      "bag_id": "B0587",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2685,
+      "deadline_tick": 2715
+    },
+    {
+      "bag_id": "B0588",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2686,
+      "deadline_tick": 2712
+    },
+    {
+      "bag_id": "B0589",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 2687,
+      "deadline_tick": 2719
+    },
+    {
+      "bag_id": "B0590",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2692,
+      "deadline_tick": 2725
+    },
+    {
+      "bag_id": "B0591",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2693,
+      "deadline_tick": 2721
+    },
+    {
+      "bag_id": "B0592",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2696,
+      "deadline_tick": 2730
+    },
+    {
+      "bag_id": "B0593",
+      "intake_node": "IA1",
+      "destination_gate": "GB1",
+      "release_tick": 2708,
+      "deadline_tick": 2742
+    },
+    {
+      "bag_id": "B0594",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2709,
+      "deadline_tick": 2740
+    },
+    {
+      "bag_id": "B0595",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 2710,
+      "deadline_tick": 2745
+    },
+    {
+      "bag_id": "B0596",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2711,
+      "deadline_tick": 2736
+    },
+    {
+      "bag_id": "B0597",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2715,
+      "deadline_tick": 2741
+    },
+    {
+      "bag_id": "B0598",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2717,
+      "deadline_tick": 2750
+    },
+    {
+      "bag_id": "B0599",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2718,
+      "deadline_tick": 2751
+    },
+    {
+      "bag_id": "B0600",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2719,
+      "deadline_tick": 2754
+    },
+    {
+      "bag_id": "B0601",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2722,
+      "deadline_tick": 2751
+    },
+    {
+      "bag_id": "B0602",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2727,
+      "deadline_tick": 2761
+    },
+    {
+      "bag_id": "B0603",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2728,
+      "deadline_tick": 2757
+    },
+    {
+      "bag_id": "B0604",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2729,
+      "deadline_tick": 2761
+    },
+    {
+      "bag_id": "B0605",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2733,
+      "deadline_tick": 2758
+    },
+    {
+      "bag_id": "B0606",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2740,
+      "deadline_tick": 2775
+    },
+    {
+      "bag_id": "B0607",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2742,
+      "deadline_tick": 2769
+    },
+    {
+      "bag_id": "B0608",
+      "intake_node": "IA2",
+      "destination_gate": "GB3",
+      "release_tick": 2746,
+      "deadline_tick": 2781
+    },
+    {
+      "bag_id": "B0609",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2749,
+      "deadline_tick": 2775
+    },
+    {
+      "bag_id": "B0610",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2752,
+      "deadline_tick": 2784
+    },
+    {
+      "bag_id": "B0611",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2753,
+      "deadline_tick": 2779
+    },
+    {
+      "bag_id": "B0612",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2765,
+      "deadline_tick": 2799
+    },
+    {
+      "bag_id": "B0613",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2766,
+      "deadline_tick": 2800
+    },
+    {
+      "bag_id": "B0614",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2769,
+      "deadline_tick": 2795
+    },
+    {
+      "bag_id": "B0615",
+      "intake_node": "IA1",
+      "destination_gate": "GB4",
+      "release_tick": 2770,
+      "deadline_tick": 2800
+    },
+    {
+      "bag_id": "B0616",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2773,
+      "deadline_tick": 2800
+    },
+    {
+      "bag_id": "B0617",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2774,
+      "deadline_tick": 2802
+    },
+    {
+      "bag_id": "B0618",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2775,
+      "deadline_tick": 2806
+    },
+    {
+      "bag_id": "B0619",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 2777,
+      "deadline_tick": 2812
+    },
+    {
+      "bag_id": "B0620",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2778,
+      "deadline_tick": 2808
+    },
+    {
+      "bag_id": "B0621",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2779,
+      "deadline_tick": 2805
+    },
+    {
+      "bag_id": "B0622",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2780,
+      "deadline_tick": 2811
+    },
+    {
+      "bag_id": "B0623",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2781,
+      "deadline_tick": 2810
+    },
+    {
+      "bag_id": "B0624",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2782,
+      "deadline_tick": 2812
+    },
+    {
+      "bag_id": "B0625",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2789,
+      "deadline_tick": 2824
+    },
+    {
+      "bag_id": "B0626",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 2794,
+      "deadline_tick": 2823
+    },
+    {
+      "bag_id": "B0627",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2799,
+      "deadline_tick": 2832
+    },
+    {
+      "bag_id": "B0628",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2806,
+      "deadline_tick": 2838
+    },
+    {
+      "bag_id": "B0629",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2807,
+      "deadline_tick": 2842
+    },
+    {
+      "bag_id": "B0630",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2808,
+      "deadline_tick": 2839
+    },
+    {
+      "bag_id": "B0631",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2813,
+      "deadline_tick": 2844
+    },
+    {
+      "bag_id": "B0632",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2817,
+      "deadline_tick": 2843
+    },
+    {
+      "bag_id": "B0633",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2818,
+      "deadline_tick": 2843
+    },
+    {
+      "bag_id": "B0634",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2819,
+      "deadline_tick": 2848
+    },
+    {
+      "bag_id": "B0635",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2822,
+      "deadline_tick": 2849
+    },
+    {
+      "bag_id": "B0636",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2833,
+      "deadline_tick": 2864
+    },
+    {
+      "bag_id": "B0637",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2840,
+      "deadline_tick": 2866
+    },
+    {
+      "bag_id": "B0638",
+      "intake_node": "IB1",
+      "destination_gate": "GA4",
+      "release_tick": 2843,
+      "deadline_tick": 2874
+    },
+    {
+      "bag_id": "B0639",
+      "intake_node": "IB2",
+      "destination_gate": "GA1",
+      "release_tick": 2849,
+      "deadline_tick": 2878
+    },
+    {
+      "bag_id": "B0640",
+      "intake_node": "IB1",
+      "destination_gate": "GA1",
+      "release_tick": 2850,
+      "deadline_tick": 2880
+    },
+    {
+      "bag_id": "B0641",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2851,
+      "deadline_tick": 2882
+    },
+    {
+      "bag_id": "B0642",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2853,
+      "deadline_tick": 2886
+    },
+    {
+      "bag_id": "B0643",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2856,
+      "deadline_tick": 2886
+    },
+    {
+      "bag_id": "B0644",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2858,
+      "deadline_tick": 2888
+    },
+    {
+      "bag_id": "B0645",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2862,
+      "deadline_tick": 2889
+    },
+    {
+      "bag_id": "B0646",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2864,
+      "deadline_tick": 2893
+    },
+    {
+      "bag_id": "B0647",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2866,
+      "deadline_tick": 2899
+    },
+    {
+      "bag_id": "B0648",
+      "intake_node": "IA1",
+      "destination_gate": "GB2",
+      "release_tick": 2872,
+      "deadline_tick": 2900
+    },
+    {
+      "bag_id": "B0649",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2876,
+      "deadline_tick": 2907
+    },
+    {
+      "bag_id": "B0650",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2877,
+      "deadline_tick": 2906
+    },
+    {
+      "bag_id": "B0651",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2879,
+      "deadline_tick": 2909
+    },
+    {
+      "bag_id": "B0652",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2881,
+      "deadline_tick": 2912
+    },
+    {
+      "bag_id": "B0653",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2882,
+      "deadline_tick": 2916
+    },
+    {
+      "bag_id": "B0654",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2884,
+      "deadline_tick": 2912
+    },
+    {
+      "bag_id": "B0655",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2886,
+      "deadline_tick": 2920
+    },
+    {
+      "bag_id": "B0656",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2890,
+      "deadline_tick": 2924
+    },
+    {
+      "bag_id": "B0657",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2892,
+      "deadline_tick": 2926
+    },
+    {
+      "bag_id": "B0658",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2893,
+      "deadline_tick": 2918
+    },
+    {
+      "bag_id": "B0659",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2901,
+      "deadline_tick": 2931
+    },
+    {
+      "bag_id": "B0660",
+      "intake_node": "IB1",
+      "destination_gate": "GA3",
+      "release_tick": 2905,
+      "deadline_tick": 2934
+    },
+    {
+      "bag_id": "B0661",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2906,
+      "deadline_tick": 2937
+    },
+    {
+      "bag_id": "B0662",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2909,
+      "deadline_tick": 2944
+    },
+    {
+      "bag_id": "B0663",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2911,
+      "deadline_tick": 2936
+    },
+    {
+      "bag_id": "B0664",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2914,
+      "deadline_tick": 2940
+    },
+    {
+      "bag_id": "B0665",
+      "intake_node": "IB2",
+      "destination_gate": "GA2",
+      "release_tick": 2915,
+      "deadline_tick": 2940
+    },
+    {
+      "bag_id": "B0666",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2916,
+      "deadline_tick": 2946
+    },
+    {
+      "bag_id": "B0667",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2917,
+      "deadline_tick": 2951
+    },
+    {
+      "bag_id": "B0668",
+      "intake_node": "IB2",
+      "destination_gate": "GB3",
+      "release_tick": 2920,
+      "deadline_tick": 2949
+    },
+    {
+      "bag_id": "B0669",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2921,
+      "deadline_tick": 2953
+    },
+    {
+      "bag_id": "B0670",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 2931,
+      "deadline_tick": 2961
+    },
+    {
+      "bag_id": "B0671",
+      "intake_node": "IB2",
+      "destination_gate": "GA3",
+      "release_tick": 2933,
+      "deadline_tick": 2967
+    },
+    {
+      "bag_id": "B0672",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2938,
+      "deadline_tick": 2963
+    },
+    {
+      "bag_id": "B0673",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 2939,
+      "deadline_tick": 2966
+    },
+    {
+      "bag_id": "B0674",
+      "intake_node": "IA2",
+      "destination_gate": "GB1",
+      "release_tick": 2941,
+      "deadline_tick": 2972
+    },
+    {
+      "bag_id": "B0675",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 2943,
+      "deadline_tick": 2978
+    },
+    {
+      "bag_id": "B0676",
+      "intake_node": "IA2",
+      "destination_gate": "GB2",
+      "release_tick": 2951,
+      "deadline_tick": 2978
+    },
+    {
+      "bag_id": "B0677",
+      "intake_node": "IA2",
+      "destination_gate": "GB4",
+      "release_tick": 2954,
+      "deadline_tick": 2985
+    },
+    {
+      "bag_id": "B0678",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 2957,
+      "deadline_tick": 2988
+    },
+    {
+      "bag_id": "B0679",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 2958,
+      "deadline_tick": 2985
+    },
+    {
+      "bag_id": "B0680",
+      "intake_node": "IA1",
+      "destination_gate": "GB3",
+      "release_tick": 2959,
+      "deadline_tick": 2991
+    },
+    {
+      "bag_id": "B0681",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 2960,
+      "deadline_tick": 2991
+    },
+    {
+      "bag_id": "B0682",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2961,
+      "deadline_tick": 2988
+    },
+    {
+      "bag_id": "B0683",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 2962,
+      "deadline_tick": 2989
+    },
+    {
+      "bag_id": "B0684",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 2963,
+      "deadline_tick": 2997
+    },
+    {
+      "bag_id": "B0685",
+      "intake_node": "IB2",
+      "destination_gate": "GB4",
+      "release_tick": 2964,
+      "deadline_tick": 2998
+    },
+    {
+      "bag_id": "B0686",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2965,
+      "deadline_tick": 2995
+    },
+    {
+      "bag_id": "B0687",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 2967,
+      "deadline_tick": 2998
+    },
+    {
+      "bag_id": "B0688",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2969,
+      "deadline_tick": 3003
+    },
+    {
+      "bag_id": "B0689",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2970,
+      "deadline_tick": 3001
+    },
+    {
+      "bag_id": "B0690",
+      "intake_node": "IB1",
+      "destination_gate": "GB1",
+      "release_tick": 2971,
+      "deadline_tick": 2997
+    },
+    {
+      "bag_id": "B0691",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 2978,
+      "deadline_tick": 3005
+    },
+    {
+      "bag_id": "B0692",
+      "intake_node": "IA2",
+      "destination_gate": "GA3",
+      "release_tick": 2982,
+      "deadline_tick": 3016
+    },
+    {
+      "bag_id": "B0693",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2985,
+      "deadline_tick": 3019
+    },
+    {
+      "bag_id": "B0694",
+      "intake_node": "IB2",
+      "destination_gate": "GA4",
+      "release_tick": 2986,
+      "deadline_tick": 3016
+    },
+    {
+      "bag_id": "B0695",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 2989,
+      "deadline_tick": 3017
+    },
+    {
+      "bag_id": "B0696",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 2992,
+      "deadline_tick": 3026
+    },
+    {
+      "bag_id": "B0697",
+      "intake_node": "IA1",
+      "destination_gate": "GA1",
+      "release_tick": 2993,
+      "deadline_tick": 3024
+    },
+    {
+      "bag_id": "B0698",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 3057,
+      "deadline_tick": 3119
+    },
+    {
+      "bag_id": "B0699",
+      "intake_node": "IB1",
+      "destination_gate": "GB2",
+      "release_tick": 3067
+    },
+    {
+      "bag_id": "B0700",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 3077
+    },
+    {
+      "bag_id": "B0701",
+      "intake_node": "IA1",
+      "destination_gate": "GB4",
+      "release_tick": 3097,
+      "deadline_tick": 3142
+    },
+    {
+      "bag_id": "B0702",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 3158,
+      "deadline_tick": 3217
+    },
+    {
+      "bag_id": "B0703",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 3164
+    },
+    {
+      "bag_id": "B0704",
+      "intake_node": "IA1",
+      "destination_gate": "GA2",
+      "release_tick": 3172
+    },
+    {
+      "bag_id": "B0705",
+      "intake_node": "IB2",
+      "destination_gate": "GB2",
+      "release_tick": 3178
+    },
+    {
+      "bag_id": "B0706",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 3191
+    },
+    {
+      "bag_id": "B0707",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 3197
+    },
+    {
+      "bag_id": "B0708",
+      "intake_node": "IA1",
+      "destination_gate": "GA3",
+      "release_tick": 3204,
+      "deadline_tick": 3249
+    },
+    {
+      "bag_id": "B0709",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 3212,
+      "deadline_tick": 3265
+    },
+    {
+      "bag_id": "B0710",
+      "intake_node": "IB2",
+      "destination_gate": "GB1",
+      "release_tick": 3213,
+      "deadline_tick": 3262
+    },
+    {
+      "bag_id": "B0711",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 3229,
+      "deadline_tick": 3277
+    },
+    {
+      "bag_id": "B0712",
+      "intake_node": "IA1",
+      "destination_gate": "GA4",
+      "release_tick": 3236,
+      "deadline_tick": 3299
+    },
+    {
+      "bag_id": "B0713",
+      "intake_node": "IB1",
+      "destination_gate": "GB3",
+      "release_tick": 3238
+    },
+    {
+      "bag_id": "B0714",
+      "intake_node": "IA2",
+      "destination_gate": "GA4",
+      "release_tick": 3261
+    },
+    {
+      "bag_id": "B0715",
+      "intake_node": "IA2",
+      "destination_gate": "GA1",
+      "release_tick": 3266,
+      "deadline_tick": 3322
+    },
+    {
+      "bag_id": "B0716",
+      "intake_node": "IB1",
+      "destination_gate": "GA2",
+      "release_tick": 3274,
+      "deadline_tick": 3326
+    },
+    {
+      "bag_id": "B0717",
+      "intake_node": "IB1",
+      "destination_gate": "GB4",
+      "release_tick": 3283
+    },
+    {
+      "bag_id": "B0718",
+      "intake_node": "IA2",
+      "destination_gate": "GA2",
+      "release_tick": 3300
+    }
+  ],
+  "jams": [
+    {
+      "jam_id": "J012",
+      "edge_id": "e_JA3_S3",
+      "start_tick": 450,
+      "duration": 40,
+      "note": "Random Friction: Minor early morning structural delay."
+    },
+    {
+      "jam_id": "J001",
+      "edge_id": "e_JA2_S2",
+      "start_tick": 1050,
+      "duration": 80,
+      "note": "Concurrent Bottleneck A: Localizes Terminal A traffic."
+    },
+    {
+      "jam_id": "J002",
+      "edge_id": "e_JB2_S4",
+      "start_tick": 1050,
+      "duration": 80,
+      "note": "Concurrent Bottleneck B: Localizes Terminal B traffic simultaneously."
+    },
+    {
+      "jam_id": "J003",
+      "edge_id": "e_S2_S3",
+      "start_tick": 1500,
+      "duration": 100,
+      "note": "Cascading Trap 1A: Jams main spine backbone highway."
+    },
+    {
+      "jam_id": "J004",
+      "edge_id": "e_S1_S6",
+      "start_tick": 1520,
+      "duration": 60,
+      "note": "Cascading Trap 1B: Jams parallel detour 20 ticks later, catching rerouted bags."
+    },
+    {
+      "jam_id": "J007",
+      "edge_id": "e_JA3_S3",
+      "start_tick": 1800,
+      "duration": 15,
+      "note": "Micro-Jam Flicker Cycle 1/4."
+    },
+    {
+      "jam_id": "J008",
+      "edge_id": "e_JA3_S3",
+      "start_tick": 1845,
+      "duration": 15,
+      "note": "Micro-Jam Flicker Cycle 2/4."
+    },
+    {
+      "jam_id": "J009",
+      "edge_id": "e_JA3_S3",
+      "start_tick": 1890,
+      "duration": 15,
+      "note": "Micro-Jam Flicker Cycle 3/4."
+    },
+    {
+      "jam_id": "J010",
+      "edge_id": "e_JA3_S3",
+      "start_tick": 1935,
+      "duration": 15,
+      "note": "Micro-Jam Flicker Cycle 4/4."
+    },
+    {
+      "jam_id": "J013",
+      "edge_id": "e_JB1_S4",
+      "start_tick": 2250,
+      "duration": 50,
+      "note": "Random Friction: Mid-day sorting congestion failure."
+    },
+    {
+      "jam_id": "J005",
+      "edge_id": "e_S3_S4",
+      "start_tick": 2500,
+      "duration": 120,
+      "note": "Cascading Trap 2A: Massive trunk link failure inside maximum rush bank."
+    },
+    {
+      "jam_id": "J006",
+      "edge_id": "e_S6_S5",
+      "start_tick": 2515,
+      "duration": 80,
+      "note": "Cascading Trap 2B: Detour cutoff 15 ticks later to punish non-reactive pathfinding."
+    },
+    {
+      "jam_id": "J011",
+      "edge_id": "e_S4_S5",
+      "start_tick": 3150,
+      "duration": 150,
+      "note": "Wind-Down Blockade: Long duration trunk choke to accumulate end-game queues."
+    }
+  ],
+  "notes": {
+    "generated_bag_count": 718,
+    "automated_jam_count": 13,
+    "design": "Procedurally optimized for Brock Solutions SmartSort challenge tracks to thoroughly separate basic static graph solvers from highly optimized dynamic systems engineering solutions."
+  }
+}

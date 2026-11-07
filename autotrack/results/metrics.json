@@ -1,0 +1,1430 @@
+{
+  "label": "in simulation",
+  "note": "Simplified 28-zone hall (~88 m x 66 m) built from the organisers' conveyor network, not YYZ.",
+  "bags": 718,
+  "bags_without_deadline": 227,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "main_seed": 1,
+  "main": {
+    "zone_on": {
+      "bag_seconds": 56070,
+      "primary_correct_pct": 82.1,
+      "primary_or_nearby_pct": 95.9,
+      "makeup_bag_seconds": 31071,
+      "makeup_correct_pct": 98.3,
+      "normal_bags": 710,
+      "zone_switches_shown": 4132,
+      "true_zone_changes": 5411,
+      "switches_per_true_change": 0.76,
+      "switches_per_bag": 5.8,
+      "true_changes_per_bag": 7.6,
+      "bounces_shown": 276,
+      "true_bounces": 364
+    },
+    "zone_off": {
+      "bag_seconds": 60789,
+      "primary_correct_pct": 83.9,
+      "primary_or_nearby_pct": 91.5,
+      "makeup_bag_seconds": 35790,
+      "makeup_correct_pct": 93.9,
+      "normal_bags": 710,
+      "zone_switches_shown": 14300,
+      "true_zone_changes": 5411,
+      "switches_per_true_change": 2.64,
+      "switches_per_bag": 20.1,
+      "true_changes_per_bag": 7.6,
+      "bounces_shown": 5042,
+      "true_bounces": 364
+    },
+    "late_normal": {
+      "bags_with_deadline": 483,
+      "truly_late": 188,
+      "warned_before_deadline": 182,
+      "warned_before_deadline_pct": 96.8,
+      "late_flag_only_after_deadline": 6,
+      "never_flagged": 0,
+      "warning_s_median": 12.0,
+      "warning_s_mean": 15.4,
+      "warning_s_min": 1,
+      "warning_s_max": 56,
+      "on_time_bags": 295,
+      "false_alarms": 54,
+      "false_alarm_pct": 18.3,
+      "false_alarm_margin_s_median": 5.5,
+      "false_alarm_bags": [
+        "B0003",
+        "B0006",
+        "B0010",
+        "B0032",
+        "B0091",
+        "B0139",
+        "B0171",
+        "B0183",
+        "B0212",
+        "B0272",
+        "B0357",
+        "B0368",
+        "B0374",
+        "B0375",
+        "B0376",
+        "B0378",
+        "B0405",
+        "B0414",
+        "B0423",
+        "B0424"
+      ],
+      "missed_bags": []
+    },
+    "late_scenario": {
+      "bags_with_deadline": 8,
+      "truly_late": 1,
+      "warned_before_deadline": 1,
+      "warned_before_deadline_pct": 100.0,
+      "late_flag_only_after_deadline": 0,
+      "never_flagged": 0,
+      "warning_s_median": 9,
+      "warning_s_mean": 9,
+      "warning_s_min": 9,
+      "warning_s_max": 9,
+      "on_time_bags": 7,
+      "false_alarms": 0,
+      "false_alarm_pct": 0.0,
+      "false_alarm_margin_s_median": null,
+      "false_alarm_bags": [],
+      "missed_bags": []
+    },
+    "false_alerts": {
+      "normal_bags": 710,
+      "by_status": {
+        "IDENTITY FLAG": {
+          "alerts": 0,
+          "bags": 0
+        },
+        "WRONG AIRCRAFT": {
+          "alerts": 0,
+          "bags": 0
+        },
+        "IDENTITY REVIEW": {
+          "alerts": 0,
+          "bags": 0
+        },
+        "MISROUTED": {
+          "alerts": 0,
+          "bags": 0
+        },
+        "TAG NOT RETURNED": {
+          "alerts": 0,
+          "bags": 0
+        },
+        "NOT SEEN": {
+          "alerts": 0,
+          "bags": 0
+        }
+      },
+      "total_alerts": 0,
+      "bags_with_any": 0,
+      "bags_with_any_pct": 0.0
+    },
+    "scenarios": [
+      {
+        "id": "on_track",
+        "title": "Normal bag ON TRACK",
+        "bag": "B0073",
+        "expected": "no alert, bag loaded",
+        "key_t": 893,
+        "detail": "phase loaded, alerts: none",
+        "passed": true,
+        "key_clock": "14:14:53",
+        "other_alerts": []
+      },
+      {
+        "id": "misrouted",
+        "title": "MISROUTED to the wrong make-up lane",
+        "bag": "B0106",
+        "expected": "MISROUTED",
+        "key_t": 1024,
+        "detail": "bag reached the wrong lane at 14:16:53",
+        "passed": true,
+        "key_clock": "14:17:04",
+        "other_alerts": [
+          "WRONG AIRCRAFT"
+        ]
+      },
+      {
+        "id": "wrong_aircraft",
+        "title": "WRONG AIRCRAFT at the belt loader",
+        "bag": "B0181",
+        "expected": "WRONG AIRCRAFT",
+        "key_t": 1374,
+        "detail": "final status ON TRACK",
+        "passed": true,
+        "key_clock": "14:22:54",
+        "other_alerts": [
+          "MISROUTED"
+        ]
+      },
+      {
+        "id": "tag_swap",
+        "title": "Tag swap: BLE and RFID disagree",
+        "bag": "B0269 (victim B0280)",
+        "expected": "IDENTITY REVIEW/FLAG on B0280",
+        "key_t": 1744,
+        "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+        "passed": true,
+        "key_clock": "14:29:04",
+        "other_alerts": []
+      },
+      {
+        "id": "tag_fell_off",
+        "title": "Tag fell off: RFID read with no BLE tag",
+        "bag": "B0402",
+        "expected": "TAG_DETACHED + photo PASS + loaded",
+        "key_t": 2211,
+        "detail": "photo pass, phase loaded",
+        "passed": true,
+        "key_clock": "14:36:51",
+        "other_alerts": []
+      },
+      {
+        "id": "transfer_late",
+        "title": "Transfer bag NOT SEEN, then LATE",
+        "bag": "B0482",
+        "expected": "NOT SEEN + LATE",
+        "key_t": 2465,
+        "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+        "passed": true,
+        "key_clock": "14:41:05",
+        "other_alerts": []
+      },
+      {
+        "id": "tag_not_returned",
+        "title": "Tag not removed: TAG NOT RETURNED",
+        "bag": "B0702",
+        "expected": "TAG NOT RETURNED",
+        "key_t": 3270,
+        "detail": "cleared at 14:53:29",
+        "passed": true,
+        "key_clock": "14:54:30",
+        "other_alerts": []
+      }
+    ]
+  },
+  "robustness": {
+    "primary_correct_pct": {
+      "on": "81.7 - 82.1",
+      "off": "82.8 - 83.9"
+    },
+    "primary_or_nearby_pct": {
+      "on": "95.4 - 95.9",
+      "off": "90.9 - 91.6"
+    },
+    "makeup_correct_pct": {
+      "on": "98.3 - 98.5",
+      "off": "93.8 - 93.9"
+    },
+    "switches_per_true_change": {
+      "on": "0.76 - 0.79",
+      "off": "2.62 - 2.65"
+    },
+    "warned_before_deadline_pct": {
+      "on": "96.3 - 96.8",
+      "off": "97.9 - 99.5"
+    },
+    "warning_s_median": {
+      "on": "11.0 - 12.0",
+      "off": "11 - 14.5"
+    },
+    "false_alarm_pct": {
+      "on": "15.3 - 20.0",
+      "off": "58.3 - 67.8"
+    },
+    "total_false_alerts": {
+      "on": "0 - 1",
+      "off": "46 - 48"
+    },
+    "scenarios_passed": {
+      "on": "7",
+      "off": "6 - 7"
+    }
+  },
+  "per_seed": {
+    "1": {
+      "on": {
+        "seconds": 12.2,
+        "zone": {
+          "bag_seconds": 56070,
+          "primary_correct_pct": 82.1,
+          "primary_or_nearby_pct": 95.9,
+          "makeup_bag_seconds": 31071,
+          "makeup_correct_pct": 98.3,
+          "normal_bags": 710,
+          "zone_switches_shown": 4132,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 0.76,
+          "switches_per_bag": 5.8,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 276,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 182,
+          "warned_before_deadline_pct": 96.8,
+          "late_flag_only_after_deadline": 6,
+          "never_flagged": 0,
+          "warning_s_median": 12.0,
+          "warning_s_mean": 15.4,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 54,
+          "false_alarm_pct": 18.3,
+          "false_alarm_margin_s_median": 5.5,
+          "false_alarm_bags": [
+            "B0003",
+            "B0006",
+            "B0010",
+            "B0032",
+            "B0091",
+            "B0139",
+            "B0171",
+            "B0183",
+            "B0212",
+            "B0272",
+            "B0357",
+            "B0368",
+            "B0374",
+            "B0375",
+            "B0376",
+            "B0378",
+            "B0405",
+            "B0414",
+            "B0423",
+            "B0424"
+          ],
+          "missed_bags": []
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 9,
+          "warning_s_mean": 9,
+          "warning_s_min": 9,
+          "warning_s_max": 9,
+          "on_time_bags": 7,
+          "false_alarms": 0,
+          "false_alarm_pct": 0.0,
+          "false_alarm_margin_s_median": null,
+          "false_alarm_bags": [],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 0,
+          "bags_with_any": 0,
+          "bags_with_any_pct": 0.0
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1024,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:04",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": 2211,
+            "detail": "photo pass, phase loaded",
+            "passed": true,
+            "key_clock": "14:36:51",
+            "other_alerts": []
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2465,
+            "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:41:05",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      },
+      "off": {
+        "seconds": 34.0,
+        "zone": {
+          "bag_seconds": 60789,
+          "primary_correct_pct": 83.9,
+          "primary_or_nearby_pct": 91.5,
+          "makeup_bag_seconds": 35790,
+          "makeup_correct_pct": 93.9,
+          "normal_bags": 710,
+          "zone_switches_shown": 14300,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 2.64,
+          "switches_per_bag": 20.1,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 5042,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 185,
+          "warned_before_deadline_pct": 98.4,
+          "late_flag_only_after_deadline": 3,
+          "never_flagged": 0,
+          "warning_s_median": 11,
+          "warning_s_mean": 15.7,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 200,
+          "false_alarm_pct": 67.8,
+          "false_alarm_margin_s_median": 12.0,
+          "false_alarm_bags": [
+            "B0003",
+            "B0005",
+            "B0006",
+            "B0010",
+            "B0013",
+            "B0014",
+            "B0021",
+            "B0032",
+            "B0037",
+            "B0046",
+            "B0048",
+            "B0049",
+            "B0052",
+            "B0053",
+            "B0056",
+            "B0061",
+            "B0066",
+            "B0088",
+            "B0090",
+            "B0091"
+          ],
+          "missed_bags": []
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 9,
+          "warning_s_mean": 9,
+          "warning_s_min": 9,
+          "warning_s_max": 9,
+          "on_time_bags": 7,
+          "false_alarms": 1,
+          "false_alarm_pct": 14.3,
+          "false_alarm_margin_s_median": 27,
+          "false_alarm_bags": [
+            "B0269"
+          ],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 46,
+              "bags": 46
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 46,
+          "bags_with_any": 46,
+          "bags_with_any_pct": 6.5
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1023,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:03",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": [
+              "LATE",
+              "LATE",
+              "LATE"
+            ]
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": 2211,
+            "detail": "photo pass, phase loaded",
+            "passed": true,
+            "key_clock": "14:36:51",
+            "other_alerts": []
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2465,
+            "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:41:05",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      }
+    },
+    "2": {
+      "on": {
+        "seconds": 12.6,
+        "zone": {
+          "bag_seconds": 56070,
+          "primary_correct_pct": 81.7,
+          "primary_or_nearby_pct": 95.4,
+          "makeup_bag_seconds": 31071,
+          "makeup_correct_pct": 98.4,
+          "normal_bags": 710,
+          "zone_switches_shown": 4267,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 0.79,
+          "switches_per_bag": 6.0,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 306,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 181,
+          "warned_before_deadline_pct": 96.3,
+          "late_flag_only_after_deadline": 7,
+          "never_flagged": 0,
+          "warning_s_median": 12,
+          "warning_s_mean": 15.5,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 59,
+          "false_alarm_pct": 20.0,
+          "false_alarm_margin_s_median": 5,
+          "false_alarm_bags": [
+            "B0006",
+            "B0032",
+            "B0044",
+            "B0052",
+            "B0053",
+            "B0066",
+            "B0091",
+            "B0097",
+            "B0123",
+            "B0171",
+            "B0212",
+            "B0266",
+            "B0272",
+            "B0283",
+            "B0291",
+            "B0357",
+            "B0368",
+            "B0369",
+            "B0372",
+            "B0375"
+          ],
+          "missed_bags": []
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 9,
+          "warning_s_mean": 9,
+          "warning_s_min": 9,
+          "warning_s_max": 9,
+          "on_time_bags": 7,
+          "false_alarms": 0,
+          "false_alarm_pct": 0.0,
+          "false_alarm_margin_s_median": null,
+          "false_alarm_bags": [],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 1,
+              "bags": 1
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 1,
+          "bags_with_any": 1,
+          "bags_with_any_pct": 0.1
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1023,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:03",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": 2211,
+            "detail": "photo pass, phase loaded",
+            "passed": true,
+            "key_clock": "14:36:51",
+            "other_alerts": []
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2465,
+            "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:41:05",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      },
+      "off": {
+        "seconds": 35.4,
+        "zone": {
+          "bag_seconds": 59717,
+          "primary_correct_pct": 82.8,
+          "primary_or_nearby_pct": 90.9,
+          "makeup_bag_seconds": 34718,
+          "makeup_correct_pct": 93.8,
+          "normal_bags": 710,
+          "zone_switches_shown": 14342,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 2.65,
+          "switches_per_bag": 20.2,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 5073,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 184,
+          "warned_before_deadline_pct": 97.9,
+          "late_flag_only_after_deadline": 4,
+          "never_flagged": 0,
+          "warning_s_median": 14.5,
+          "warning_s_mean": 16.3,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 192,
+          "false_alarm_pct": 65.1,
+          "false_alarm_margin_s_median": 11.0,
+          "false_alarm_bags": [
+            "B0005",
+            "B0006",
+            "B0010",
+            "B0013",
+            "B0021",
+            "B0032",
+            "B0045",
+            "B0046",
+            "B0049",
+            "B0052",
+            "B0053",
+            "B0061",
+            "B0066",
+            "B0083",
+            "B0088",
+            "B0090",
+            "B0091",
+            "B0097",
+            "B0109",
+            "B0119"
+          ],
+          "missed_bags": []
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 9,
+          "warning_s_mean": 9,
+          "warning_s_min": 9,
+          "warning_s_max": 9,
+          "on_time_bags": 7,
+          "false_alarms": 2,
+          "false_alarm_pct": 28.6,
+          "false_alarm_margin_s_median": 19.5,
+          "false_alarm_bags": [
+            "B0269",
+            "B0402"
+          ],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 48,
+              "bags": 48
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 48,
+          "bags_with_any": 48,
+          "bags_with_any_pct": 6.8
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1023,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:03",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": [
+              "LATE"
+            ]
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": 2211,
+            "detail": "photo pass, phase loaded",
+            "passed": true,
+            "key_clock": "14:36:51",
+            "other_alerts": [
+              "LATE"
+            ]
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2465,
+            "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:41:05",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      }
+    },
+    "3": {
+      "on": {
+        "seconds": 11.7,
+        "zone": {
+          "bag_seconds": 56070,
+          "primary_correct_pct": 82.0,
+          "primary_or_nearby_pct": 95.7,
+          "makeup_bag_seconds": 31071,
+          "makeup_correct_pct": 98.5,
+          "normal_bags": 710,
+          "zone_switches_shown": 4199,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 0.78,
+          "switches_per_bag": 5.9,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 272,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 182,
+          "warned_before_deadline_pct": 96.8,
+          "late_flag_only_after_deadline": 3,
+          "never_flagged": 3,
+          "warning_s_median": 11.0,
+          "warning_s_mean": 15.3,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 45,
+          "false_alarm_pct": 15.3,
+          "false_alarm_margin_s_median": 5,
+          "false_alarm_bags": [
+            "B0006",
+            "B0013",
+            "B0032",
+            "B0053",
+            "B0091",
+            "B0097",
+            "B0123",
+            "B0139",
+            "B0171",
+            "B0212",
+            "B0272",
+            "B0278",
+            "B0291",
+            "B0357",
+            "B0372",
+            "B0376",
+            "B0378",
+            "B0414",
+            "B0416",
+            "B0420"
+          ],
+          "missed_bags": [
+            "B0563",
+            "B0606",
+            "B0652"
+          ]
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 9,
+          "warning_s_mean": 9,
+          "warning_s_min": 9,
+          "warning_s_max": 9,
+          "on_time_bags": 7,
+          "false_alarms": 0,
+          "false_alarm_pct": 0.0,
+          "false_alarm_margin_s_median": null,
+          "false_alarm_bags": [],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 0,
+          "bags_with_any": 0,
+          "bags_with_any_pct": 0.0
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1024,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:04",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": 2211,
+            "detail": "photo pass, phase loaded",
+            "passed": true,
+            "key_clock": "14:36:51",
+            "other_alerts": []
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2465,
+            "detail": "NOT SEEN at 14:40:46, LATE -10 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:41:05",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      },
+      "off": {
+        "seconds": 28.1,
+        "zone": {
+          "bag_seconds": 59341,
+          "primary_correct_pct": 83.3,
+          "primary_or_nearby_pct": 91.6,
+          "makeup_bag_seconds": 34342,
+          "makeup_correct_pct": 93.9,
+          "normal_bags": 710,
+          "zone_switches_shown": 14200,
+          "true_zone_changes": 5411,
+          "switches_per_true_change": 2.62,
+          "switches_per_bag": 20.0,
+          "true_changes_per_bag": 7.6,
+          "bounces_shown": 5020,
+          "true_bounces": 364
+        },
+        "late_normal": {
+          "bags_with_deadline": 483,
+          "truly_late": 188,
+          "warned_before_deadline": 187,
+          "warned_before_deadline_pct": 99.5,
+          "late_flag_only_after_deadline": 1,
+          "never_flagged": 0,
+          "warning_s_median": 12,
+          "warning_s_mean": 15.9,
+          "warning_s_min": 1,
+          "warning_s_max": 56,
+          "on_time_bags": 295,
+          "false_alarms": 172,
+          "false_alarm_pct": 58.3,
+          "false_alarm_margin_s_median": 11.0,
+          "false_alarm_bags": [
+            "B0006",
+            "B0013",
+            "B0032",
+            "B0041",
+            "B0044",
+            "B0053",
+            "B0056",
+            "B0057",
+            "B0066",
+            "B0090",
+            "B0091",
+            "B0097",
+            "B0119",
+            "B0123",
+            "B0129",
+            "B0132",
+            "B0139",
+            "B0146",
+            "B0171",
+            "B0172"
+          ],
+          "missed_bags": []
+        },
+        "late_scenario": {
+          "bags_with_deadline": 8,
+          "truly_late": 1,
+          "warned_before_deadline": 1,
+          "warned_before_deadline_pct": 100.0,
+          "late_flag_only_after_deadline": 0,
+          "never_flagged": 0,
+          "warning_s_median": 22,
+          "warning_s_mean": 22,
+          "warning_s_min": 22,
+          "warning_s_max": 22,
+          "on_time_bags": 7,
+          "false_alarms": 2,
+          "false_alarm_pct": 28.6,
+          "false_alarm_margin_s_median": 19.5,
+          "false_alarm_bags": [
+            "B0269",
+            "B0402"
+          ],
+          "missed_bags": []
+        },
+        "false_alerts": {
+          "normal_bags": 710,
+          "by_status": {
+            "IDENTITY FLAG": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "WRONG AIRCRAFT": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "IDENTITY REVIEW": {
+              "alerts": 46,
+              "bags": 46
+            },
+            "MISROUTED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "TAG NOT RETURNED": {
+              "alerts": 0,
+              "bags": 0
+            },
+            "NOT SEEN": {
+              "alerts": 0,
+              "bags": 0
+            }
+          },
+          "total_alerts": 46,
+          "bags_with_any": 46,
+          "bags_with_any_pct": 6.5
+        },
+        "scenarios": [
+          {
+            "id": "on_track",
+            "title": "Normal bag ON TRACK",
+            "bag": "B0073",
+            "expected": "no alert, bag loaded",
+            "key_t": 893,
+            "detail": "phase loaded, alerts: none",
+            "passed": true,
+            "key_clock": "14:14:53",
+            "other_alerts": []
+          },
+          {
+            "id": "misrouted",
+            "title": "MISROUTED to the wrong make-up lane",
+            "bag": "B0106",
+            "expected": "MISROUTED",
+            "key_t": 1023,
+            "detail": "bag reached the wrong lane at 14:16:53",
+            "passed": true,
+            "key_clock": "14:17:03",
+            "other_alerts": [
+              "WRONG AIRCRAFT"
+            ]
+          },
+          {
+            "id": "wrong_aircraft",
+            "title": "WRONG AIRCRAFT at the belt loader",
+            "bag": "B0181",
+            "expected": "WRONG AIRCRAFT",
+            "key_t": 1374,
+            "detail": "final status ON TRACK",
+            "passed": true,
+            "key_clock": "14:22:54",
+            "other_alerts": [
+              "MISROUTED",
+              "MISROUTED"
+            ]
+          },
+          {
+            "id": "tag_swap",
+            "title": "Tag swap: BLE and RFID disagree",
+            "bag": "B0269 (victim B0280)",
+            "expected": "IDENTITY REVIEW/FLAG on B0280",
+            "key_t": 1744,
+            "detail": "victim alerts: ['IDENTITY REVIEW', 'IDENTITY FLAG']",
+            "passed": true,
+            "key_clock": "14:29:04",
+            "other_alerts": [
+              "LATE"
+            ]
+          },
+          {
+            "id": "tag_fell_off",
+            "title": "Tag fell off: RFID read with no BLE tag",
+            "bag": "B0402",
+            "expected": "TAG_DETACHED + photo PASS + loaded",
+            "key_t": null,
+            "detail": "photo pass, phase loaded",
+            "passed": false,
+            "key_clock": null,
+            "other_alerts": [
+              "LATE",
+              "LATE",
+              "LATE"
+            ]
+          },
+          {
+            "id": "transfer_late",
+            "title": "Transfer bag NOT SEEN, then LATE",
+            "bag": "B0482",
+            "expected": "NOT SEEN + LATE",
+            "key_t": 2433,
+            "detail": "NOT SEEN at 14:40:46, LATE 22 s before the 14:40:55 cut-off",
+            "passed": true,
+            "key_clock": "14:40:33",
+            "other_alerts": []
+          },
+          {
+            "id": "tag_not_returned",
+            "title": "Tag not removed: TAG NOT RETURNED",
+            "bag": "B0702",
+            "expected": "TAG NOT RETURNED",
+            "key_t": 3270,
+            "detail": "cleared at 14:53:29",
+            "passed": true,
+            "key_clock": "14:54:30",
+            "other_alerts": []
+          }
+        ]
+      }
+    }
+  },
+  "runtime_s": 135.2
+}

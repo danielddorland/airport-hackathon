@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoTrack</title>
+<!-- One page, no internet needed: plain HTML + CSS + JavaScript. It asks the local server
+     (server.py) for the latest state twice a second and draws it. -->
+<style>
+  :root {
+    --bg: #E6E9EF; --bg2: #DFE3EA; --card: #E9ECF2; --ink: #1d2230; --muted: #5d6475; --line: #c9ceda;
+    --red: #ED1C24; --amber: #E8890C; --green: #1F9D55; --blue: #2563EB; --purple: #7C3AED; --grey: #8a90a0;
+    --shadow: 6px 6px 14px #c5c9d2, -6px -6px 14px #ffffff;
+    --inset: inset 3px 3px 7px #c5c9d2, inset -3px -3px 7px #ffffff;
+    --mono: "JetBrains Mono", Consolas, "Cascadia Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.4 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; }
+  h1, h2, h3 { font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif; margin: 0; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 7px 12px;
+           background: var(--card); box-shadow: var(--shadow); color: var(--ink); }
+  button:active { box-shadow: var(--inset); }
+  button.primary { background: var(--red); color: #fff; box-shadow: 4px 4px 10px #c5c9d2; }
+  button.small { padding: 4px 9px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  select, input { font: inherit; border: 0; border-radius: 10px; padding: 7px 10px; background: var(--bg);
+                  box-shadow: var(--inset); color: var(--ink); }
+  .card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 18px; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo h1 { font-size: 22px; letter-spacing: -.5px; }
+  .logo small { display: block; color: var(--muted); font-size: 12px; }
+  .clock { font-family: var(--mono); font-size: 26px; font-weight: 700; padding: 4px 14px; border-radius: 12px;
+           box-shadow: var(--inset); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+           letter-spacing: .3px; color: #fff; background: var(--grey); white-space: nowrap; }
+  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  #timeline { width: 220px; }
+  nav { display: flex; gap: 8px; padding: 0 18px 10px; flex-wrap: wrap; }
+  nav button.on { box-shadow: var(--inset); color: var(--red); font-weight: 700; }
+  main { padding: 0 18px 24px; }
+  .tab { display: none; }
+  .tab.on { display: block; }
+
+  .ops { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr); gap: 16px; }
+  @media (max-width: 1100px) { .ops { grid-template-columns: 1fr; } }
+  #map { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); box-shadow: var(--inset); }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .tile { border-radius: 12px; padding: 8px; box-shadow: var(--inset); cursor: pointer; }
+  .tile b { display: block; font-size: 22px; font-family: var(--mono); }
+  .tile span { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; }
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .alert { border-left: 5px solid var(--grey); padding: 8px 10px; border-radius: 10px; background: var(--bg);
+           margin-bottom: 8px; }
+  .alert .acts { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .scroll { max-height: 330px; overflow: auto; padding-right: 4px; }
+  .sc { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .sc:last-child { border: 0; }
+  .sc .num { font-family: var(--mono); font-weight: 700; color: var(--red); width: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr.click { cursor: pointer; }
+  tr.click:hover { background: var(--bg2); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .fleet { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
+  .fleet div { box-shadow: var(--inset); border-radius: 10px; padding: 6px 2px; }
+  .fleet b { display: block; font-family: var(--mono); font-size: 18px; }
+  .fleet span { font-size: 10.5px; color: var(--muted); }
+
+  #drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(460px, 100%); background: var(--bg);
+            box-shadow: -10px 0 30px #b9bec9; padding: 18px; overflow: auto; transform: translateX(105%);
+            transition: transform .2s; z-index: 10; }
+  #drawer.on { transform: none; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 10px; font-size: 13px; margin: 10px 0; }
+  .kv div:nth-child(odd) { color: var(--muted); }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); }
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+  .hist { font-size: 12px; border-left: 2px solid var(--line); padding-left: 10px; }
+  .hist div { margin-bottom: 6px; }
+
+  .phone { width: min(400px, 100%); margin: 0 auto; border-radius: 34px; padding: 20px; background: var(--card);
+           box-shadow: var(--shadow); }
+  .light { width: 120px; height: 120px; border-radius: 50%; margin: 14px auto; box-shadow: var(--inset);
+           display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 15px;
+           text-align: center; }
+  .light.red { background: var(--red); animation: pulse .6s infinite alternate; }
+  .light.amber { background: var(--amber); animation: pulse 1s infinite alternate; }
+  .light.green { background: var(--green); }
+  @keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
+  .flash { animation: flash 1s infinite; }
+  @keyframes flash { 50% { background: #ffd9da; } }
+  .pass { width: min(520px, 100%); margin: 0 auto; }
+  .feedline { font-family: var(--mono); font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--line);
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #busy { position: fixed; inset: 0; background: rgba(230,233,239,.75); display: none; align-items: center;
+          justify-content: center; z-index: 20; font-size: 20px; font-weight: 700; }
+  #busy.on { display: flex; }
+  .note { font-size: 12px; color: var(--muted); }
+  #ltmap, #ltspark { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); box-shadow: var(--inset); }
+  .ltstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .ltstats div { box-shadow: var(--inset); border-radius: 12px; padding: 10px; text-align: center; }
+  .ltstats span { display: block; font-size: 12px; color: var(--muted); }
+  .ltstats b { font-family: var(--mono); font-size: 26px; }
+  #lttag { transition: transform 300ms linear; }
+  #lttag.flash circle { animation: ltblink .35s infinite alternate; }
+  @keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M17 0C7.6 0 0 7.6 0 17c0 12 17 23 17 23s17-11 17-23C34 7.6 26.4 0 17 0z" fill="#ED1C24"/><circle cx="17" cy="16" r="6.5" fill="#fff"/></svg>
+    <div><h1>AutoTrack</h1><small>Daniel Solutions &middot; catch the wrong-plane bag before it leaves</small></div>
+  </div>
+  <div class="clock" id="clock">--:--:--</div>
+  <div><span class="badge" id="phase">-</span><br><span class="badge" id="mode">SIM</span></div>
+  <div class="controls">
+    <button id="play">Pause</button>
+    <select id="speed" title="Simulated seconds per real second">
+      <option value="1">1x (real time)</option><option value="2">2x</option><option value="5">5x</option>
+      <option value="10">10x</option><option value="20">20x</option><option value="60">60x</option>
+    </select>
+    <input type="range" id="timeline" min="0" max="3600" value="0" title="Jump in time">
+    <button id="restart" title="Start the hour again">Restart</button>
+  </div>
+</header>
+<nav>
+  <button data-tab="ops" class="on">Ops dashboard</button>
+  <button data-tab="live">Live ESP32</button>
+  <button data-tab="loader">Loader handheld</button>
+  <button data-tab="passenger">Passenger view</button>
+  <button data-tab="feed">Message feed</button>
+</nav>
+
+<main>
+  <!-- ======================= LIVE ESP32 ======================= -->
+  <section class="tab" id="tab-live">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Live ESP32 tag: stay near the checkpoint</h2>
+        <span class="badge" id="ltbadge">-</span>
+      </div>
+      <p class="note" id="lthelp" style="margin:6px 0 10px"></p>
+      <svg id="ltmap" viewBox="0 0 1000 250"></svg>
+      <div class="ltstats">
+        <div><span>Signal (smoothed)</span><b id="ltrssi">--</b></div>
+        <div><span>Distance (rough)</span><b id="ltdist">--</b></div>
+        <div><span>State</span><b id="ltstate">--</b></div>
+      </div>
+      <div class="row" style="margin:12px 0">
+        <label>Too far when weaker than <input type="number" id="ltthr" value="-65" step="1" style="width:80px"> dBm</label>
+        <button class="primary" onclick="beep(3)">Test beep</button>
+        <button onclick="beep(0)">Stop</button>
+      </div>
+      <h3 style="margin:6px 0">Signal, last 60 seconds</h3>
+      <svg id="ltspark" viewBox="0 0 1000 140"></svg>
+      <h3 style="margin:10px 0 4px">What happened</h3>
+      <div id="ltevents" class="note"></div>
+    </div>
+  </section>
+  <!-- ======================= OPS ======================= -->
+  <section class="tab on" id="tab-ops">
+    <div class="ops">
+      <div class="side">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h3>Baggage hall (simplified layout, not YYZ)</h3>
+            <span class="note">dots = AutoTrack's position estimate &middot; <span style="color:var(--red)">red belt</span> = jammed</span>
+          </div>
+          <svg id="map" viewBox="20 0 1010 760"></svg>
+          <div class="row note" style="margin-top:6px" id="legend"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px">
+            <h3>Bags in the system <span class="muted" id="nbags"></span></h3>
+            <div class="row"><select id="filter"><option value="">All statuses</option></select>
+              <input id="search" placeholder="Bag id / tag number / flight" size="22"></div>
+          </div>
+          <div class="scroll" style="max-height:360px"><table id="bags"><thead><tr><th>Bag</th><th>Status</th><th>Zone (+ nearby)</th><th>Flight</th><th>Reason</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <div class="tiles" id="tiles"></div>
+          <h3 style="margin-bottom:8px">Active alerts <span class="muted" id="nalerts"></span></h3>
+          <div class="scroll" id="alerts"></div>
+        </div>
+        <div class="card">
+          <h3>Demo scenarios</h3>
+          <p class="note" style="margin:4px 0 6px">Click one: the clock jumps to just before it happens and slows to 2x. Click the bag to follow it.</p>
+          <div id="scenarios"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">BLE tag fleet (closed loop inside YYZ)</h3>
+          <div class="fleet" id="fleet"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= LOADER ======================= -->
+  <section class="tab" id="tab-loader">
+    <div class="phone">
+      <div class="row" style="justify-content:space-between">
+        <h2>Belt loader</h2><select id="gate"></select>
+      </div>
+      <div class="muted" id="lflight" style="margin-top:4px"></div>
+      <div class="light green" id="llight">READY</div>
+      <div style="text-align:center;font-weight:700" id="lmsg"></div>
+      <div style="text-align:center;margin:6px 0 10px" id="lpaused"></div>
+      <h3 style="margin-bottom:6px">Alerts for this belt</h3>
+      <div id="lalerts"></div>
+      <h3 style="margin:12px 0 6px">Bags in this make-up lane</h3>
+      <div id="lbags" class="note"></div>
+      <p class="note" style="margin-top:12px">Ramp crews wear hearing protection, so every alert is visual too: this screen, the loader light, and the tag's own flashing LED.</p>
+    </div>
+  </section>
+
+  <!-- ======================= PASSENGER ======================= -->
+  <section class="tab" id="tab-passenger">
+    <div class="pass">
+      <div class="card">
+        <h2>Where is my bag?</h2>
+        <p class="note">Enter your booking reference and the 10-digit bag tag number under the barcode on your bag tag receipt. You only ever see your own bag.</p>
+        <div class="row" style="margin:10px 0">
+          <input id="pbook" placeholder="Booking ref (e.g. K7Q2XM)" size="18">
+          <input id="pplate" placeholder="Bag tag number" size="16">
+          <button class="primary" onclick="lookup()">Find my bag</button>
+        </div>
+        <div id="presult"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Demo passengers</h3>
+        <p class="note">Shortcuts for the demo (the scenario bags). Click to fill in.</p>
+        <div id="pdemo" class="note"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= FEED ======================= -->
+  <section class="tab" id="tab-feed">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3>Shared message feed</h3>
+        <div class="row"><label class="note"><input type="checkbox" id="hidezone"> hide ZONE_CHANGED</label>
+          <label class="note"><input type="checkbox" id="pausefeed"> pause</label></div>
+      </div>
+      <p class="note">Every event is one small JSON message. Our dashboards subscribe to it; the same feed could go to Brock SmartBag and airline BSM/BPM messages
+        (live stream for other systems: <span class="mono">/api/stream</span>; also saved in <span class="mono">data/events.db</span>).</p>
+      <div id="feed" style="max-height:620px;overflow:auto"></div>
+    </div>
+  </section>
+</main>
+
+<aside id="drawer"></aside>
+<div id="busy"></div>
+
+<script>
+const STATUS = {
+  "IDENTITY FLAG": "#B00020", "WRONG AIRCRAFT": "#ED1C24", "IDENTITY REVIEW": "#7C3AED", "MISROUTED": "#E8890C",
+  "TAG NOT RETURNED": "#B45309", "NOT SEEN": "#6B7280", "LATE": "#2563EB", "ON TRACK": "#1F9D55" };
+const KIND = { checkin: "#2563EB", transfer: "#0EA5E9", sortation: "#475569", transport: "#9F7AEA",
+               storage: "#A855F7", makeup: "#1F9D55" };
+let L = null, S = null, lastSeq = 0, openBag = null, feedLines = [];
+const POLL_MS = 250;          // ask the server for the latest state 4 times a second
+const dotEls = new Map();     // bag id -> its dot on the map (kept between updates)
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pill = (st) => `<span class="badge" style="background:${STATUS[st] || "#888"}">${esc(st)}</span>`;
+
+async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+// ---------------------------------------------------------------- setup
+async function init() {
+  L = await get("/api/layout");
+  drawMapBase();
+  $("legend").innerHTML = Object.entries({ "Check-in": KIND.checkin, "Transfer input": KIND.transfer, "Sortation (RFID tunnel)": KIND.sortation,
+    "Transport": KIND.transport, "Early bag storage": KIND.storage, "Make-up + loader (RFID portal)": KIND.makeup })
+    .map(([k, c]) => `<span><svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="${c}"/></svg> ${k}</span>`).join(" ");
+  $("filter").innerHTML += Object.keys(STATUS).map(s => `<option>${s}</option>`).join("");
+  $("scenarios").innerHTML = L.scenarios.map((s, i) => `
+    <div class="sc"><div class="num">${i + 1}</div><div style="flex:1"><b>${esc(s.title)}</b>
+      <div class="note">${esc(s.story)}</div>
+      <div class="row" style="margin-top:4px"><button class="small primary" onclick="scenario('${s.id}')">Jump here</button>
+      <button class="small" onclick="showBag('${s.other || s.bag}')">Bag ${s.other || s.bag}</button></div></div></div>`).join("");
+  $("gate").innerHTML = L.nodes.filter(n => n.kind === "makeup").map(n => `<option value="${n.id}">${n.id} - ${n.flight.flight}</option>`).join("");
+  $("gate").value = "GA4";
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + b.dataset.tab));
+    if (b.dataset.tab === "passenger") loadDemoPassengers();
+  });
+  $("play").onclick = () => post("/api/control", { cmd: S && S.playing ? "pause" : "play" });
+  $("speed").onchange = (e) => post("/api/control", { cmd: "speed", value: +e.target.value });
+  $("timeline").onchange = async (e) => { $("busy").textContent = "Jumping..."; $("busy").classList.add("on");
+    try { await post("/api/control", { cmd: "seek", value: +e.target.value }); } finally { $("busy").classList.remove("on"); } };
+  $("restart").onclick = () => post("/api/control", { cmd: "restart" });
+  $("filter").onchange = renderBags; $("search").oninput = renderBags;
+  drawLiveBase();
+  $("ltthr").onchange = (e) => post("/api/livetag/threshold", { dbm: +e.target.value });
+  if (L.mode === "real") document.querySelector('nav button[data-tab="live"]').click();
+  loop(); feedLoop(); liveLoop();
+}
+
+function px(n) { return [n.x, n.y]; }
+
+function drawMapBase() {
+  const nodes = Object.fromEntries(L.nodes.map(n => [n.id, n]));
+  let s = `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+           <path d="M0,0 L10,5 L0,10 z" fill="#9aa1b1"/></marker></defs><g id="belts">`;
+  const seen = new Set();
+  for (const b of L.belts) {
+    const a = nodes[b.from], c = nodes[b.to];
+    const key = [b.from, b.to].sort().join("-");
+    const two = L.belts.some(x => x.from === b.to && x.to === b.from);
+    if (two && seen.has(key)) continue; seen.add(key);
+    // stop the line short of the circle so the arrow is visible
+    const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy), k = 24 / len;
+    s += `<line id="belt-${b.from}-${b.to}" x1="${a.x + dx * k}" y1="${a.y + dy * k}" x2="${c.x - dx * k}" y2="${c.y - dy * k}"
+          stroke="#aab0bf" stroke-width="4" stroke-linecap="round" ${two ? "" : 'marker-end="url(#arr)"'}/>`;
+    if (two) s += `<line id="belt-${b.to}-${b.from}" x1="0" y1="0" x2="0" y2="0" stroke="none"/>`;
+  }
+  s += `</g><g id="rings"></g><g id="zones">`;
+  for (const n of L.nodes) {
+    s += `<g class="zone" onclick="filterZone('${n.id}')" style="cursor:pointer">
+      <circle cx="${n.x}" cy="${n.y}" r="20" fill="${KIND[n.kind]}" stroke="#fff" stroke-width="3"/>
+      <text x="${n.x}" y="${n.y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${n.id}</text>
+      <text id="occ-${n.id}" x="${n.x + 17}" y="${n.y - 15}" font-size="11" font-weight="700" fill="#1d2230"></text>`;
+    if (n.flight) s += `<text x="${n.x}" y="${n.y + (n.id.startsWith("GA") ? -28 : 36)}" text-anchor="middle" font-size="11" fill="#5d6475">${n.flight.flight}</text>
+      <rect id="lamp-${n.id}" x="${n.x - 33}" y="${n.y - 7}" width="9" height="14" rx="3" fill="#1F9D55"/>`;
+    s += `</g>`;
+  }
+  s += `</g><g id="dots"></g><g id="fallen"></g>`;
+  $("map").innerHTML = s;
+}
+
+function filterZone(z) { $("search").value = z; renderBags(); }
+
+// ---------------------------------------------------------------- live updates
+async function loop() {
+  try { S = await get("/api/state"); render(); } catch (e) { console.warn(e); }
+  setTimeout(loop, POLL_MS);
+}
+
+function render() {
+  $("clock").textContent = S.clock;
+  $("phase").textContent = S.phase;
+  $("mode").textContent = S.mode === "real" ? "REAL BLE + SIM" : "SIMULATION";
+  $("mode").style.background = S.mode === "real" ? "#ED1C24" : "#5d6475";
+  $("play").textContent = S.playing ? "Pause" : "Play";
+  if (document.activeElement !== $("speed")) $("speed").value = String(S.speed);
+  if (document.activeElement !== $("timeline")) $("timeline").value = S.t;
+  $("busy").textContent = S.busy || ""; $("busy").classList.toggle("on", !!S.busy);
+  // tiles
+  $("tiles").innerHTML = Object.entries(S.counts).map(([k, v]) =>
+    `<div class="tile" onclick="$('filter').value='${k}';renderBags()" style="${v && k !== "ON TRACK" ? `color:${STATUS[k]}` : ""}">
+     <b>${v}</b><span>${k}</span></div>`).join("");
+  // alerts
+  $("nalerts").textContent = `(${S.alerts.length})`;
+  $("alerts").innerHTML = S.alerts.length ? S.alerts.map(alertHtml).join("") : `<div class="note">No active alerts.</div>`;
+  // fleet
+  const f = S.tags;
+  $("fleet").innerHTML = [["in_use", "on bags"], ["in_return_bins", "in return bins"], ["charging", "charging"],
+    ["available", "ready"], ["returned_total", "returned"]].map(([k, l]) => `<div><b>${f[k]}</b><span>${l}</span></div>`).join("");
+  renderMap();
+  renderBags();
+  renderLoader();
+  if (openBag && (++drawerTick % 6 === 0)) refreshBag();
+  $("phase").style.background = S.t >= S.total ? "#ED1C24" : "";
+  if (S.t >= S.total && !(S.live && S.live.id)) $("phase").textContent = "hour finished - press Restart";
+}
+let drawerTick = 0;
+
+function actionsFor(a) {
+  const b = (act, label, cls = "") => `<button class="small ${cls}" onclick="act('${a.bag}','${act}')">${label}</button>`;
+  switch (a.status) {
+    case "MISROUTED": case "WRONG AIRCRAFT": return b("pull", "Pull bag & re-send", "primary");
+    case "IDENTITY REVIEW": return b("approve", "Approve: same bag") + b("security", "Hold for security", "primary");
+    case "IDENTITY FLAG": return b("security", "Call security (hold)", "primary") + b("approve", "Approve after inspection");
+    case "TAG NOT RETURNED": return b("recover", "Tag recovered", "primary");
+    default: return b("ack", "Acknowledge");
+  }
+}
+function alertHtml(a) {
+  const c = STATUS[a.status];
+  const urgent = ["WRONG AIRCRAFT", "IDENTITY FLAG"].includes(a.status);
+  return `<div class="alert ${urgent ? "flash" : ""}" style="border-color:${c}">
+    <div class="row" style="justify-content:space-between">${pill(a.status)}
+      <span class="note mono">${a.clock}${a.gate ? " &middot; " + a.gate : ""}</span></div>
+    <div style="margin-top:4px"><a href="#" onclick="showBag('${a.bag}');return false"><b>${a.bag}</b></a> ${esc(a.reason)}</div>
+    ${a.ack ? `<div class="note">Acknowledged by ${esc(a.ack)}</div>` : ""}
+    <div class="acts">${actionsFor(a)}</div></div>`;
+}
+async function act(bag, action) {
+  const who = document.querySelector("#tab-loader.on") ? "loader " + $("gate").value : "ops";
+  await post("/api/action", { bag, action, who });
+}
+
+function renderMap() {
+  for (const n of L.nodes) {
+    const o = S.occupancy[n.id]; $("occ-" + n.id).textContent = o ? o : "";
+    if (n.kind === "makeup") {
+      const l = S.loaders[n.id];
+      $("lamp-" + n.id).setAttribute("fill", { red: "#ED1C24", amber: "#E8890C", green: "#1F9D55" }[l.light] || "#888");
+    }
+  }
+  document.querySelectorAll("#belts line").forEach(e => { if (e.getAttribute("stroke") !== "none") { e.setAttribute("stroke", "#aab0bf"); e.removeAttribute("stroke-dasharray"); } });
+  for (const j of S.jams) {
+    let e = $(`belt-${j.from}-${j.to}`);
+    if (e && e.getAttribute("stroke") === "none") e = $(`belt-${j.to}-${j.from}`);
+    if (e) { e.setAttribute("stroke", "#ED1C24"); e.setAttribute("stroke-dasharray", "8 6"); }
+  }
+  // rings for the followed bag: primary zone solid, nearby zones dashed
+  const nodes = Object.fromEntries(L.nodes.map(n => [n.id, n]));
+  const fb = S.bags.find(b => b.id === (openBag || S.follow));
+  let r = "";
+  if (fb && fb.zone && nodes[fb.zone]) {
+    const n = nodes[fb.zone];
+    r += `<circle cx="${n.x}" cy="${n.y}" r="34" fill="none" stroke="#ED1C24" stroke-width="4"/>`;
+    for (const z of fb.nearby || []) {
+      const m = nodes[z.zone]; if (!m) continue;
+      r += `<circle cx="${m.x}" cy="${m.y}" r="30" fill="none" stroke="#ED1C24" stroke-width="2" stroke-dasharray="5 5" opacity="${z.strength === "strong" ? .9 : z.strength === "medium" ? .6 : .35}"/>`;
+    }
+  }
+  $("rings").innerHTML = r;
+  // dots at AutoTrack's weighted-centroid estimate (metres -> pixels)
+  // Each bag keeps the same SVG element between updates, so the browser can slide it smoothly
+  // to its new position (CSS transition) instead of the dot jumping every update.
+  const k = 1 / L.m_per_px;
+  const layer = $("dots"), seen = new Set();
+  for (const b of S.bags) {
+    if (!b.centroid || b.tag_detached) continue;
+    seen.add(b.id);
+    let g = dotEls.get(b.id);
+    if (!g) {
+      g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.innerHTML = `<circle cx="0" cy="0" opacity=".9" style="cursor:pointer"><title></title></circle>
+                     <text x="12" y="-10" font-size="13" font-weight="800"></text>`;
+      g.firstElementChild.onclick = () => showBag(b.id);
+      g.style.transform = `translate(${b.centroid[0] * k}px, ${b.centroid[1] * k}px)`;
+      layer.appendChild(g);
+      dotEls.set(b.id, g);
+      void g.getBoundingClientRect();  // place it first, then turn on the glide
+      g.style.transition = `transform ${POLL_MS}ms linear`;
+    }
+    const big = fb && fb.id === b.id;
+    const c = g.firstElementChild;
+    c.setAttribute("r", big ? 9 : b.status === "ON TRACK" ? 4 : 6.5);
+    c.setAttribute("fill", STATUS[b.status]);
+    c.setAttribute("stroke", big ? "#000" : "#fff");
+    c.setAttribute("stroke-width", big ? 2.5 : 1);
+    c.firstElementChild.textContent = `${b.id} ${b.status}`;
+    g.lastElementChild.textContent = big ? b.id : "";
+    g.style.transform = `translate(${b.centroid[0] * k}px, ${b.centroid[1] * k}px)`;
+    if (big) layer.appendChild(g);  // draw the followed bag on top
+  }
+  for (const [id, g] of dotEls) if (!seen.has(id)) { g.remove(); dotEls.delete(id); }
+  let d = "";
+  for (const t of S.fallen_tags) {
+    const x = t.x * k, y = t.y * k;
+    d += `<g><path d="M${x - 7},${y - 7} L${x + 7},${y + 7} M${x + 7},${y - 7} L${x - 7},${y + 7}" stroke="#1d2230" stroke-width="3"/>
+          <text x="${x + 10}" y="${y + 18}" font-size="11">${t.tag} lying here</text></g>`;
+  }
+  $("fallen").innerHTML = d;
+}
+
+function renderBags() {
+  if (!S) return;
+  const f = $("filter").value, q = $("search").value.trim().toUpperCase();
+  const rows = S.bags.filter(b => (!f || b.status === f) &&
+    (!q || [b.id, b.plate, b.flight, b.zone, b.tag].join(" ").toUpperCase().includes(q)));
+  $("nbags").textContent = `(${S.active} in the hall${rows.length !== S.bags.length ? `, ${rows.length} shown` : ""})`;
+  $("bags").querySelector("tbody").innerHTML = rows.slice(0, 150).map(b => `
+    <tr class="click" onclick="showBag('${b.id}')"><td><b>${b.id}</b>${b.transfer ? ' <span class="note">transfer</span>' : ""}<br><span class="note mono">${b.plate}</span></td>
+    <td>${pill(b.status)}</td>
+    <td>${esc(b.zone_name)}<br><span class="note">${(b.nearby || []).map(n => `${n.zone} (${n.strength})`).join(", ")}</span></td>
+    <td>${esc(b.flight)}<br><span class="note">lane ${b.booked_gate}</span></td>
+    <td class="note">${esc(b.reason)}</td></tr>`).join("");
+}
+
+async function beep(mode) { const r = await post("/api/live/beep", { mode }); if (!r.ok) alert(r.error || "Tag did not accept the command (see the server window)."); }
+
+// ---------------------------------------------------------------- live ESP32 (stay near the checkpoint)
+const LT = { maxM: 7, x0: 130, x1: 960, y: 140 };
+const ltX = (m) => LT.x0 + Math.min(m, LT.maxM) / LT.maxM * (LT.x1 - LT.x0);
+function drawLiveBase() {
+  let s = `<rect id="ltgood" x="${LT.x0}" y="${LT.y - 45}" width="0" height="90" fill="#1F9D55" opacity=".12"/>
+    <rect id="ltbad" x="0" y="${LT.y - 45}" width="0" height="90" fill="#ED1C24" opacity=".10"/>
+    <line x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}" stroke="#aab0bf" stroke-width="4" stroke-linecap="round"/>`;
+  for (let m = 0; m <= LT.maxM; m++) {
+    s += `<line x1="${ltX(m)}" y1="${LT.y + 45}" x2="${ltX(m)}" y2="${LT.y + 55}" stroke="#8a90a0" stroke-width="2"/>
+      <text x="${ltX(m)}" y="${LT.y + 72}" text-anchor="middle" font-size="14" fill="#5d6475">${m} m${m === LT.maxM ? "+" : ""}</text>`;
+  }
+  // the laptop = the checkpoint
+  s += `<g transform="translate(40, ${LT.y - 32})"><rect x="0" y="0" width="70" height="44" rx="5" fill="#1d2230"/>
+      <rect x="5" y="5" width="60" height="34" rx="2" fill="#7fb3ff"/><rect x="-8" y="46" width="86" height="8" rx="3" fill="#1d2230"/></g>
+    <text x="75" y="${LT.y + 46}" text-anchor="middle" font-size="13" font-weight="700">Laptop</text>
+    <text x="75" y="${LT.y + 62}" text-anchor="middle" font-size="12" fill="#5d6475">(checkpoint)</text>
+    <line id="ltthrline" x1="0" y1="${LT.y - 60}" x2="0" y2="${LT.y + 45}" stroke="#ED1C24" stroke-width="3" stroke-dasharray="8 6"/>
+    <text id="ltthrtext" x="0" y="${LT.y - 66}" text-anchor="middle" font-size="13" font-weight="700" fill="#ED1C24"></text>
+    <rect id="ltrange" x="0" y="${LT.y - 8}" width="0" height="16" rx="8" fill="#2563EB" opacity=".18"/>
+    <g id="lttag" style="transform: translate(${LT.x0}px, ${LT.y}px)">
+      <circle r="18" fill="#2563EB" stroke="#fff" stroke-width="4"/>
+      <text y="5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">ESP</text>
+      <text id="lttaglabel" y="-28" text-anchor="middle" font-size="14" font-weight="800" fill="#1d2230"></text>
+    </g>`;
+  $("ltmap").innerHTML = s;
+}
+const LTSTATE = { ok: ["IN RANGE", "#1F9D55"], too_far: ["TOO FAR - tag flashing", "#ED1C24"],
+                  lost: ["LOST - no signal", "#ED1C24"], no_tag: ["waiting for tag", "#8a90a0"] };
+async function liveLoop() {
+  try {
+    if (document.querySelector("#tab-live.on")) renderLiveTag(await get("/api/livetag"));
+  } catch (e) { console.warn(e); }
+  setTimeout(liveLoop, 300);
+}
+function renderLiveTag(d) {
+  $("ltbadge").textContent = !d.real ? "not in real mode" : d.error ? "Bluetooth error" : d.scanning ? "Bluetooth scanning" : "starting";
+  $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#ED1C24";
+  $("lthelp").innerHTML = !d.real
+    ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
+    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): about -40 dBm is touching, -60 dBm is about 1 m, and below ${d.threshold_dbm} dBm the tag is too far and flashes red.
+       Distance is a rough estimate from signal strength (bodies, walls and how you hold the board change it a lot), so the blue band shows the likely range.`
+    + (d.error ? `<br><span style="color:var(--red)">${esc(d.error)}</span>` : "");
+  if (document.activeElement !== $("ltthr")) $("ltthr").value = d.threshold_dbm;
+  // zones + threshold
+  const tx = ltX(d.threshold_m);
+  $("ltgood").setAttribute("width", tx - LT.x0);
+  $("ltbad").setAttribute("x", tx); $("ltbad").setAttribute("width", Math.max(0, LT.x1 + 30 - tx));
+  $("ltthrline").setAttribute("x1", tx); $("ltthrline").setAttribute("x2", tx);
+  $("ltthrtext").setAttribute("x", tx); $("ltthrtext").textContent = `${d.threshold_dbm} dBm \u2248 ${d.threshold_m.toFixed(1)} m`;
+  // the tag
+  const [label, col] = LTSTATE[d.state] || LTSTATE.no_tag;
+  const has = d.distance_m != null && d.state !== "lost";
+  const m = has ? d.distance_m : LT.maxM;
+  $("lttag").style.transform = `translate(${ltX(m)}px, ${LT.y}px)`;
+  $("lttag").firstElementChild.setAttribute("fill", col);
+  $("lttag").classList.toggle("flash", d.state === "too_far" || d.state === "lost");
+  $("lttaglabel").textContent = has ? `${Math.round(d.rssi)} dBm` : (d.state === "lost" ? "no signal" : "");
+  if (has) { const lo = ltX(m / 1.5), hi = ltX(m * 1.5); $("ltrange").setAttribute("x", lo); $("ltrange").setAttribute("width", hi - lo); }
+  else $("ltrange").setAttribute("width", 0);
+  $("ltrssi").textContent = d.rssi == null ? "--" : `${Math.round(d.rssi)} dBm`;
+  $("ltdist").textContent = has ? `~${d.distance_m < 1 ? Math.round(d.distance_m * 100) + " cm" : d.distance_m.toFixed(1) + " m"}` : "--";
+  $("ltstate").textContent = label; $("ltstate").style.color = col;
+  // signal over the last 60 s
+  const W = 1000, H = 140, yOf = (r) => 10 + (Math.max(-90, Math.min(-10, r)) + 10) / -80 * (H - 20), xOf = (ago) => W + ago / 60 * W;
+  let sp = "";
+  for (const r of [-20, -40, -60, -80]) sp += `<line x1="0" y1="${yOf(r)}" x2="${W}" y2="${yOf(r)}" stroke="#c9ceda"/><text x="6" y="${yOf(r) - 3}" font-size="11" fill="#8a90a0">${r} dBm</text>`;
+  sp += `<line x1="0" y1="${yOf(d.threshold_dbm)}" x2="${W}" y2="${yOf(d.threshold_dbm)}" stroke="#ED1C24" stroke-width="2" stroke-dasharray="8 6"/>`;
+  if (d.history.length > 1) sp += `<polyline fill="none" stroke="#2563EB" stroke-width="3" points="${d.history.map(([a, r]) => `${xOf(a).toFixed(1)},${yOf(r).toFixed(1)}`).join(" ")}"/>`;
+  $("ltspark").innerHTML = sp;
+  $("ltevents").innerHTML = d.events.length ? d.events.map(e => `<div>${e.ago_s} s ago: ${esc(e.text)}</div>`).join("") : "Nothing yet.";
+}
+async function scenario(id) {
+  const sc = L.scenarios.find(s => s.id === id);
+  $("busy").textContent = "Jumping to: " + sc.title + "..."; $("busy").classList.add("on");
+  try { await post("/api/control", { cmd: "scenario", value: id, speed: 2 }); }
+  finally { $("busy").classList.remove("on"); }
+  showBag(sc.other || sc.bag);
+}
+
+// ---------------------------------------------------------------- bag drawer
+async function showBag(id) { openBag = id; $("drawer").classList.add("on"); post("/api/control", { cmd: "follow", value: id }); refreshBag(); }
+function closeBag() { openBag = null; $("drawer").classList.remove("on"); }
+async function refreshBag() {
+  let b; try { b = await get("/api/bag/" + openBag); } catch { $("drawer").innerHTML = `<button onclick="closeBag()">Close</button><p>Bag ${esc(openBag)} not checked in yet.</p>`; return; }
+  const ph = b.photo;
+  const photo = ph && ph.verdict !== "not_run"
+    ? `<h3 style="margin-top:12px">SecureBag photo check: ${esc(ph.verdict.toUpperCase())}</h3>
+       <div class="note">Real bag_compare.verify_bags() result on sample pair <b>${esc(ph.pair)}</b>: combined score ${ph.score}, ${esc(ph.reason)}. Decision support only - a human decides.</div>
+       <div class="photos" style="margin-top:6px"><div><img src="/static/${ph.image_a}" alt="check-in photo"><div class="note">Check-in photo</div></div>
+       <div><img src="/static/${ph.image_b}" alt="loader camera photo"><div class="note">Belt-loader camera</div></div></div>`
+    : `<div class="note" style="margin-top:8px">Photo check: ${ph ? esc(ph.reason) : "runs at the belt loader"}</div>`;
+  const sig = (b.signals || []).map(s => `<div class="row" style="gap:6px"><span class="mono" style="width:42px">${s.zone}</span>
+    <div class="bar" style="flex:1"><i style="width:${Math.max(0, Math.min(100, (s.rssi + 100) * 2))}%"></i></div><span class="mono note">${s.rssi} dBm</span></div>`).join("");
+  $("drawer").innerHTML = `
+    <div class="row" style="justify-content:space-between"><h2>${esc(b.id)}</h2><button onclick="closeBag()">Close</button></div>
+    <div style="margin:8px 0">${pill(b.status)}</div>
+    <div class="alert" style="border-color:${STATUS[b.status]}">${esc(b.reason)}</div>
+    ${S.alerts.filter(a => a.bag === b.id).map(a => `<div class="acts row">${actionsFor(a)}</div>`).join("")}
+    <div class="kv">
+      <div>Bag tag number</div><div class="mono">${esc(b.plate)}</div>
+      <div>Flight</div><div>${esc(b.flight)} to ${esc(b.destination)} (lane ${b.booked_gate})</div>
+      <div>BLE tag</div><div class="mono">${esc(b.tag)}${b.tag_detached ? " (fell off at " + b.tag_detached + ")" : ""}</div>
+      <div>Primary zone</div><div><b>${esc(b.zone_name)}</b></div>
+      <div>Nearby zones</div><div>${(b.nearby || []).map(n => `${n.zone} (${n.strength})`).join(", ") || "-"}</div>
+      <div>Position estimate</div><div>${b.centroid ? `x ${b.centroid[0]} m, y ${b.centroid[1]} m (weighted centroid, ~2-5 m)` : "-"}</div>
+      <div>Cut-off</div><div>${b.deadline_clock || "none"}</div>
+      <div>Check-in weight</div><div>${b.weight} kg</div>
+      <div>Booking ref</div><div class="mono">${esc(b.booking_ref)}</div>
+      <div>Type</div><div>${b.transfer ? "Transfer bag (tagged at transfer input)" : "Origin bag (tagged at bag drop)"}</div>
+    </div>
+    ${sig ? `<h3>BLE signal per receiver (smoothed)</h3><div style="margin:6px 0">${sig}</div>` : ""}
+    ${photo}
+    <h3 style="margin:14px 0 6px">History</h3>
+    <div class="hist">${b.history.slice().reverse().map(h => `<div><span class="mono note">${h.clock}</span> ${esc(h.text)}</div>`).join("")}</div>`;
+}
+
+// ---------------------------------------------------------------- loader handheld
+function renderLoader() {
+  const g = $("gate").value, l = S.loaders[g], f = S.flights[g];
+  $("lflight").textContent = `Serving ${f.flight} to ${f.to} - closes ${clockOf(f.closes)}`;
+  const light = $("llight");
+  light.className = "light " + l.light;
+  light.textContent = { red: "STOP", amber: "HOLD", green: "OK" }[l.light] || "";
+  $("lmsg").textContent = l.msg;
+  $("lpaused").innerHTML = l.paused ? `<span class="badge" style="background:#ED1C24;font-size:14px">BELT PAUSED</span>` : `<span class="note">Belt running</span>`;
+  const al = S.alerts.filter(a => a.gate === g || (S.bags.find(b => b.id === a.bag) || {}).zone === g);
+  $("lalerts").innerHTML = al.length ? al.map(alertHtml).join("") : `<div class="note">No alerts for ${g}.</div>`;
+  const inLane = S.bags.filter(b => b.zone === g);
+  $("lbags").innerHTML = inLane.length ? inLane.map(b => `${pill(b.status)} <b>${b.id}</b> ${esc(b.flight)}`).join("<br>") : "Lane empty.";
+}
+function clockOf(t) { const s = 14 * 3600 + t; return [Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60, s % 60].map(x => String(x).padStart(2, "0")).join(":"); }
+
+// ---------------------------------------------------------------- passenger
+async function loadDemoPassengers() {
+  const ps = await get("/api/demo_passengers");
+  $("pdemo").innerHTML = ps.length ? ps.map(p => `<div><a href="#" onclick="$('pbook').value='${p.booking}';$('pplate').value='${p.plate}';lookup();return false">
+    ${esc(p.scenario)} (${p.bag}): <span class="mono">${p.booking} / ${p.plate}</span></a></div>`).join("") : "Scenario bags haven't been checked in yet at this point in the hour.";
+}
+async function lookup() {
+  const r = await fetch(`/api/passenger?booking=${encodeURIComponent($("pbook").value)}&plate=${encodeURIComponent($("pplate").value)}`);
+  if (!r.ok) { $("presult").innerHTML = `<div class="alert">No bag found for that booking reference and bag tag number.</div>`; return; }
+  const p = await r.json();
+  $("presult").innerHTML = `<div class="alert" style="border-color:var(--red)"><h3>${esc(p.message)}</h3>
+    <div class="note">Flight ${esc(p.flight)} to ${esc(p.destination)} &middot; bag tag ${esc(p.plate)} &middot; updated ${esc(p.updated)}</div>
+    <div style="margin-top:6px">Now: <b>${esc(p.where)}</b></div></div>
+    <div class="hist" style="margin-top:8px">${p.journey.map(h => `<div><span class="mono note">${h.clock}</span> ${esc(h.text.split(":")[0])}</div>`).join("")}</div>`;
+  clearTimeout(window._pt); window._pt = setTimeout(() => { if (document.querySelector("#tab-passenger.on")) lookup(); }, 2000);
+}
+
+// ---------------------------------------------------------------- feed
+let feedRun = null;
+async function feedLoop() {
+  try {
+    if (S && S.feed_run !== feedRun) { feedRun = S.feed_run; lastSeq = 0; feedLines = []; }
+    const evs = await get(`/api/events?after=${lastSeq}&limit=200`);
+    if (evs.length && evs[0].seq < lastSeq) feedLines = [];
+    for (const e of evs) { lastSeq = Math.max(lastSeq, e.seq); feedLines.push(e); }
+
+    feedLines = feedLines.slice(-400);
+    if (!$("pausefeed").checked && document.querySelector("#tab-feed.on")) {
+      const hide = $("hidezone").checked;
+      $("feed").innerHTML = feedLines.filter(e => !(hide && e.type === "ZONE_CHANGED")).slice().reverse().slice(0, 250)
+        .map(e => `<div class="feedline" title="${esc(JSON.stringify(e))}">${esc(JSON.stringify(e))}</div>`).join("");
+    }
+  } catch (e) { console.warn(e); }
+  setTimeout(feedLoop, 1000);
+}
+init();
+</script>
+</body>
+</html>

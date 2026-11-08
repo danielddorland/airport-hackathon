@@ -239,130 +239,196 @@ async function init() {
 }
 
 // ---------------------------------------------------------------- the baggage-hall map
-// Checkpoints (one BLE receiver + zone each) are squares. Conveyor belts are gray columns
-// between them, with chevrons showing which way they run; two-way belts get two lanes side by
-// side. Bags are small squares that travel ALONG the belts (where the simulation says they
-// physically are), coloured by AutoTrack's status. The red outline shows the zone AutoTrack
-// THINKS the selected bag is in (from the noisy Bluetooth signal).
-const SQ = 46;            // checkpoint square size (px in map units)
-const LANE_GAP = 8;       // how far apart the two lanes of a two-way belt are
-let NODES = {}, LANES = {};
+// Drawn like a baggage-system schematic: checkpoints (one BLE receiver + zone each) are squares,
+// laid out left to right by stage (check-in / transfer input -> sortation -> transport spine ->
+// make-up lanes + belt loaders). Conveyor belts only run horizontally and vertically, each in its
+// own lane, with rollers that move in the belt's direction. Bags ride along those belts where the
+// simulation says they physically are, coloured by AutoTrack's status. The red outline shows the
+// zone AutoTrack THINKS the selected bag is in (from the noisy Bluetooth signal).
+const SQ = 46, HS = SQ / 2;   // checkpoint square size / half size (map units)
+let NODES = {}, ROUTES = {};
 
 function laneKey(a, b) { return a + ">" + b; }
 
-function buildLanes() {
-  NODES = Object.fromEntries(L.nodes.map(n => [n.id, n]));
-  LANES = {};
-  for (const b of L.belts) {
-    const a = NODES[b.from], c = NODES[b.to];
-    const two = L.belts.some(x => x.from === b.to && x.to === b.from);
-    const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
-    const off = two ? LANE_GAP : 0;                     // two-way: each direction gets its own lane
-    const ox = -uy * off, oy = ux * off;
-    // where the column leaves / enters the squares (the edge of the square along this direction)
-    const edge = (SQ / 2) / Math.max(Math.abs(ux), Math.abs(uy));
-    LANES[laneKey(b.from, b.to)] = {
-      from: b.from, to: b.to, two, len,
-      x1: a.x + ox, y1: a.y + oy, x2: c.x + ox, y2: c.y + oy,                         // centre to centre
-      ex1: a.x + ox + ux * edge, ey1: a.y + oy + uy * edge,                            // square edge to edge
-      ex2: c.x + ox - ux * edge, ey2: c.y + oy - uy * edge, ux, uy,
-    };
+// Is point range (a vertical run at x from y0 to y1) clear of every checkpoint square except a, c?
+function vClear(x, y0, y1, skip) {
+  return !Object.values(NODES).some(n => !skip.includes(n.id) && Math.abs(n.x - x) < HS + 7
+    && Math.max(y0, y1) > n.y - HS - 7 && Math.min(y0, y1) < n.y + HS + 7);
+}
+function hClear(y, x0, x1, skip) {
+  return !Object.values(NODES).some(n => !skip.includes(n.id) && Math.abs(n.y - y) < HS + 7
+    && Math.max(x0, x1) > n.x - HS - 7 && Math.min(x0, x1) < n.x + HS + 7);
+}
+
+function buildRoutes() {
+  NODES = Object.fromEntries(L.nodes.map(n => [n.id, { ...n, x: n.sx, y: n.sy }]));
+  ROUTES = {};
+  // 1. Which side of each square a belt leaves from / arrives at.
+  const belts = L.belts.map(b => {
+    const a = NODES[b.from], c = NODES[b.to], dx = c.x - a.x, dy = c.y - a.y;
+    let type = Math.abs(dx) >= 40 ? "h" : "v", exit, entry;
+    if (type === "h") { exit = dx > 0 ? "R" : "L"; entry = dx > 0 ? "L" : "R"; }
+    else { exit = dy > 0 ? "B" : "T"; entry = dy > 0 ? "T" : "B"; }
+    if (type === "v" && !vClear(a.x, a.y, c.y, [a.id, c.id])) { type = "d"; exit = entry = "L"; }  // go round the side
+    return { ...b, a, c, type, exit, entry, key: b.from + b.to };
+  });
+  // 2. Spread the belts using the same side of a square along that side (sorted to avoid crossings).
+  const sides = {};
+  for (const b of belts) {
+    (sides[b.from + b.exit] ||= []).push({ b, end: "exit", other: b.c });
+    (sides[b.to + b.entry] ||= []).push({ b, end: "entry", other: b.a });
+  }
+  for (const [k, list] of Object.entries(sides)) {
+    const side = k.slice(-1), vertSide = side === "L" || side === "R";
+    list.sort((p, q) => (vertSide ? p.other.y - q.other.y : p.other.x - q.other.x) || (p.b.key < q.b.key ? -1 : 1));
+    const step = Math.min(12, 38 / list.length);
+    list.forEach((p, i) => {
+      const off = (i - (list.length - 1) / 2) * step, n = p.end === "exit" ? p.b.a : p.b.c;
+      const pt = side === "R" ? [n.x + HS, n.y + off] : side === "L" ? [n.x - HS, n.y + off]
+               : side === "B" ? [n.x + off, n.y + HS] : [n.x + off, n.y - HS];
+      p.b[p.end === "exit" ? "p0" : "p3"] = pt;
+    });
+  }
+  // 3. Give every belt that needs a bend its own vertical (or horizontal) channel.
+  const vRuns = [], hRuns = [];
+  const needV = belts.filter(b => (b.type === "h" || b.type === "d") && Math.abs(b.p0[1] - b.p3[1]) > 0.5);
+  needV.sort((p, q) => Math.abs(p.p0[1] - p.p3[1]) - Math.abs(q.p0[1] - q.p3[1]));
+  for (const b of needV) {
+    const y0 = b.p0[1], y1 = b.p3[1];
+    let lo, hi, pref;
+    if (b.type === "h") { lo = Math.min(b.p0[0], b.p3[0]) + 9; hi = Math.max(b.p0[0], b.p3[0]) - 9; pref = (lo + hi) / 2; }
+    else { hi = Math.min(b.p0[0], b.p3[0]) - 12; lo = 100; pref = hi - 6; }
+    let cx = pref;
+    for (let k = 0; k < 80; k++) {
+      const cand = pref + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 9 * (b.type === "d" ? -1 : 1);
+      if (cand < lo || cand > hi) continue;
+      const free = vRuns.every(r => Math.abs(r.x - cand) >= 8 || Math.max(y0, y1) < Math.min(r.y0, r.y1) - 6 || Math.min(y0, y1) > Math.max(r.y0, r.y1) + 6);
+      if (free && vClear(cand, y0, y1, [b.from, b.to])) { cx = cand; break; }
+    }
+    vRuns.push({ x: cx, y0, y1 });
+    b.pts = [b.p0, [cx, y0], [cx, y1], b.p3];
+  }
+  for (const b of belts.filter(b => b.type === "v" && Math.abs(b.p0[0] - b.p3[0]) > 0.5)) {
+    const cy = (b.p0[1] + b.p3[1]) / 2;
+    hRuns.push({ y: cy }); b.pts = [b.p0, [b.p0[0], cy], [b.p3[0], cy], b.p3];
+  }
+  for (const b of belts) {
+    if (!b.pts) b.pts = [b.p0, b.p3];
+    const cum = [0];
+    for (let i = 1; i < b.pts.length; i++) cum.push(cum[i - 1] + Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]));
+    ROUTES[laneKey(b.from, b.to)] = { from: b.from, to: b.to, pts: b.pts, cum, len: cum[cum.length - 1] || 1 };
   }
 }
 
 function drawMapBase() {
-  buildLanes();
+  buildRoutes();
+  const pts = (r) => r.pts.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ");
   let s = `<g id="belts">`;
-  // dark outlines first (so two-lane belts read as one wide conveyor), then the gray columns
-  for (const l of Object.values(LANES))
-    s += `<line class="belt-edge" x1="${l.ex1}" y1="${l.ey1}" x2="${l.ex2}" y2="${l.ey2}"/>`;
-  for (const l of Object.values(LANES)) {
-    s += `<line class="belt" id="belt-${l.from}-${l.to}" x1="${l.ex1}" y1="${l.ey1}" x2="${l.ex2}" y2="${l.ey2}"><title>Belt ${l.from} → ${l.to}</title></line>`;
-    // chevrons pointing the way the belt runs
-    for (const f of l.len > 200 ? [0.33, 0.66] : [0.5]) {
-      const cx = l.ex1 + (l.ex2 - l.ex1) * f, cy = l.ey1 + (l.ey2 - l.ey1) * f, ang = Math.atan2(l.uy, l.ux) * 180 / Math.PI;
-      s += `<path class="belt-chevron" d="M-4,-4 L3,0 L-4,4 Z" transform="translate(${cx},${cy}) rotate(${ang})"/>`;
+  for (const r of Object.values(ROUTES)) s += `<polyline class="belt-edge" points="${pts(r)}"/>`;
+  for (const r of Object.values(ROUTES)) {
+    s += `<polyline class="belt" id="belt-${r.from}-${r.to}" points="${pts(r)}"><title>Conveyor ${r.from} → ${r.to}</title></polyline>
+          <polyline class="belt-rollers" id="rollers-${r.from}-${r.to}" points="${pts(r)}"/>`;
+    // a direction chevron in the middle of the longest straight piece
+    let best = 1, bl = 0;
+    for (let i = 1; i < r.pts.length; i++) { const l = r.cum[i] - r.cum[i - 1]; if (l > bl) { bl = l; best = i; } }
+    if (bl > 30) {
+      const [x0, y0] = r.pts[best - 1], [x1, y1] = r.pts[best], ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+      s += `<path class="belt-chevron" d="M-4,-4 L3,0 L-4,4 Z" transform="translate(${(x0 + x1) / 2},${(y0 + y1) / 2}) rotate(${ang})"/>`;
     }
   }
   s += `</g><g id="rings"></g><g id="zones">`;
-  for (const n of L.nodes) {
-    const h = SQ / 2, dark = n.kind === "makeup";
+  for (const n of Object.values(NODES)) {
+    const dark = n.kind === "makeup";
     s += `<g class="zone" onclick="filterZone('${n.id}')" style="cursor:pointer"><title>${esc(n.name)}</title>
-      <rect class="cp-shadow" x="${n.x - h + 4}" y="${n.y - h + 4}" width="${SQ}" height="${SQ}"/>
-      <rect class="cp k-${n.kind}" x="${n.x - h}" y="${n.y - h}" width="${SQ}" height="${SQ}"/>
+      <rect class="cp-shadow" x="${n.x - HS + 4}" y="${n.y - HS + 4}" width="${SQ}" height="${SQ}"/>
+      <rect class="cp k-${n.kind}" x="${n.x - HS}" y="${n.y - HS}" width="${SQ}" height="${SQ}"/>
       <text class="cp-text${dark ? " on-dark" : ""}" x="${n.x}" y="${n.y - 5}">${n.id}</text>
-      <g id="occ-${n.id}" style="display:none"><rect class="cp-count-bg" x="${n.x + h - 9}" y="${n.y - h - 9}" width="18" height="16"/>
-        <text class="cp-count" x="${n.x + h}" y="${n.y - h + 3}" text-anchor="middle"></text></g>`;
-    if (n.flight) s += `<text class="flight-label" x="${n.x}" y="${n.y + (n.id.startsWith("GA") ? -h - 10 : h + 18)}" text-anchor="middle">${n.flight.flight}</text>
-      <rect class="lamp green" id="lamp-${n.id}" x="${n.x - h - 14}" y="${n.y - 8}" width="9" height="16"/>`;
+      <g id="occ-${n.id}" style="display:none"><rect class="cp-count-bg" x="${n.x + HS - 9}" y="${n.y - HS - 9}" width="18" height="16"/>
+        <text class="cp-count" x="${n.x + HS}" y="${n.y - HS + 3}" text-anchor="middle"></text></g>`;
+    if (n.flight) s += `<text class="flight-label" x="${n.x + HS + 8}" y="${n.y + 4}">${n.flight.flight}</text>
+      <rect class="lamp green" id="lamp-${n.id}" x="${n.x - 4}" y="${n.y + HS + 4}" width="16" height="7" transform="translate(-4,0)"/>`;
     s += `</g>`;
   }
   s += `</g><g id="dots"></g><g id="fallen"></g>`;
   $("map").innerHTML = s;
+  $("map").setAttribute("viewBox", "20 10 1010 740");
 }
 
-// ---------- bags travelling along the belts
+// ---------- bags riding the belts
 // For each bag we remember where it was drawn and animate it to the newest position along the
-// lanes (through the checkpoint square if it moved onto the next belt), every animation frame.
-const bagAnim = new Map();   // bag id -> {g, at: [from, to, frac], path: [...], t0, dur}
+// belt route (through the checkpoint square if it moved onto the next belt), every animation frame.
+const bagAnim = new Map();   // bag id -> {g, at: [from, to, frac], path, t0, dur}
 
 function lanePoint(from, to, frac, id) {
-  if (from === to || !LANES[laneKey(from, to)]) {        // waiting in a square: small fixed spot inside it
+  const r = ROUTES[laneKey(from, to)];
+  if (from === to || !r) {                 // waiting in a square (make-up lane): bottom half, under its name
     const n = NODES[from]; if (!n) return null;
     let hsh = 0; for (const ch of id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
-    return [n.x + ((hsh % 5) - 2) * 8, n.y + 13];  // bottom half of the square, under its name
+    return [n.x + ((hsh % 5) - 2) * 8, n.y + 13, 0];
   }
-  const l = LANES[laneKey(from, to)];
-  return [l.x1 + (l.x2 - l.x1) * frac, l.y1 + (l.y2 - l.y1) * frac];
+  // frac 0 = centre of the start square, 1 = centre of the end square: walk the square, the belt, the square
+  const a = NODES[from], c = NODES[to];
+  const legs = [[a.x, a.y], ...r.pts, [c.x, c.y]];
+  const cum = [0];
+  for (let i = 1; i < legs.length; i++) cum.push(cum[i - 1] + Math.hypot(legs[i][0] - legs[i - 1][0], legs[i][1] - legs[i - 1][1]));
+  const d = Math.max(0, Math.min(1, frac)) * cum[cum.length - 1];
+  for (let i = 1; i < legs.length; i++) {
+    if (d <= cum[i] || i === legs.length - 1) {
+      const l = cum[i] - cum[i - 1] || 1, t = (d - cum[i - 1]) / l;
+      const [x0, y0] = legs[i - 1], [x1, y1] = legs[i];
+      return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI];
+    }
+  }
 }
 
 function planPath(at, to) {
-  // Returns a list of [from, to, f0, f1] legs from position `at` to position `to`, along belts.
+  // A list of [from, to, f0, f1] legs from position `at` to position `to`, along the belts.
   const [a1, a2, af] = at, [b1, b2, bf] = to;
   if (a1 === b1 && a2 === b2) return bf >= af ? [[a1, a2, af, bf]] : null;      // same belt, forward
   if (a1 === a2) return a1 === b1 ? [[b1, b2, 0, bf]] : null;                    // left a square onto a belt
   if (b1 === b2) return a2 === b1 ? [[a1, a2, af, 1]] : null;                    // reached the next square
   if (a2 === b1) return [[a1, a2, af, 1], [b1, b2, 0, bf]];                      // onto the next belt
-  if (LANES[laneKey(a2, b1)]) return [[a1, a2, af, 1], [a2, b1, 0, 1], [b1, b2, 0, bf]]; // skipped one belt
+  if (ROUTES[laneKey(a2, b1)]) return [[a1, a2, af, 1], [a2, b1, 0, 1], [b1, b2, 0, bf]]; // skipped one belt
   return null;                                                                    // can't tell: jump
+}
+
+function setBagXY(A, p) {
+  if (!p) return;
+  A.g.setAttribute("transform", `translate(${p[0].toFixed(1)},${p[1].toFixed(1)})`);
+  A.g.firstElementChild.setAttribute("transform", `rotate(${Math.round(p[2] || 0)})`);
 }
 
 function placeBag(id, b) {
   let A = bagAnim.get(id);
   if (!A) {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.innerHTML = `<rect class="bag" x="-6" y="-6" width="12" height="12" style="cursor:pointer"><title></title></rect>
+    g.innerHTML = `<rect class="bag" x="-7" y="-5" width="14" height="10" style="cursor:pointer"><title></title></rect>
                    <text class="bag-label" x="12" y="-10"></text>`;
     g.firstElementChild.onclick = () => showBag(id);
     $("dots").appendChild(g);
     A = { g, at: b.belt, path: null };
     bagAnim.set(id, A);
-    const p = lanePoint(b.belt[0], b.belt[1], b.belt[2], id);
-    if (p) g.setAttribute("transform", `translate(${p[0]},${p[1]})`);
-  } else {
-    const same = A.at && A.at.join() === b.belt.join();
-    if (!same) {
-      const path = planPath(A.at, b.belt);
-      A.path = path ? path.map(([f, t, f0, f1]) => ({ f, t, f0, f1, len: Math.max(1, (LANES[laneKey(f, t)] || { len: 1 }).len * (f1 - f0)) })) : null;
-      if (!path) { const p = lanePoint(b.belt[0], b.belt[1], b.belt[2], id); if (p) A.g.setAttribute("transform", `translate(${p[0]},${p[1]})`); }
-      A.t0 = performance.now(); A.dur = POLL_MS * 1.1; A.at = b.belt;
-    }
+    setBagXY(A, lanePoint(b.belt[0], b.belt[1], b.belt[2], id));
+  } else if (A.at.join() !== b.belt.join()) {
+    const path = planPath(A.at, b.belt);
+    A.path = path ? path.map(([f, t, f0, f1]) => ({ f, t, f0, f1, len: Math.max(1, (ROUTES[laneKey(f, t)] || { len: 1 }).len * (f1 - f0)) })) : null;
+    if (!path) setBagXY(A, lanePoint(b.belt[0], b.belt[1], b.belt[2], id));
+    A.t0 = performance.now(); A.dur = POLL_MS * 1.1; A.at = b.belt;
   }
   return A;
 }
 
-function animateBags(now) {
+function stepBags(now) {
   for (const [id, A] of bagAnim) {
     if (!A.path) continue;
     const total = A.path.reduce((s, leg) => s + leg.len, 0);
     let d = Math.min(1, (now - A.t0) / A.dur) * total, leg = A.path[A.path.length - 1], f = leg.f1;
     for (const L2 of A.path) { if (d <= L2.len) { leg = L2; f = L2.f0 + (L2.f1 - L2.f0) * (d / L2.len); break; } d -= L2.len; }
-    const p = lanePoint(leg.f, leg.t, f, id);
-    if (p) A.g.setAttribute("transform", `translate(${p[0].toFixed(1)},${p[1].toFixed(1)})`);
+    setBagXY(A, lanePoint(leg.f, leg.t, f, id));
     if (now - A.t0 >= A.dur) A.path = null;
   }
-  requestAnimationFrame(animateBags);
 }
+function animateBags(now) { stepBags(now); requestAnimationFrame(animateBags); }
 requestAnimationFrame(animateBags);
 
 function filterZone(z) { $("search").value = z; renderBags(); }
@@ -433,16 +499,18 @@ function renderMap() {
     g.style.display = o ? "" : "none"; if (o) g.lastElementChild.textContent = o;
     if (n.kind === "makeup") $("lamp-" + n.id).setAttribute("class", "lamp " + (S.loaders[n.id].light || "green"));
   }
-  document.querySelectorAll("#belts .belt").forEach(e => e.classList.remove("jam"));
-  for (const j of S.jams) { const e = $(`belt-${j.from}-${j.to}`); if (e) e.classList.add("jam"); }
+  // conveyors: rollers move while the clock runs; a jammed belt turns red and stops
+  $("map").classList.toggle("paused", !S.playing || S.t >= S.total);
+  document.querySelectorAll("#belts .jam").forEach(e => e.classList.remove("jam"));
+  for (const j of S.jams) { $(`belt-${j.from}-${j.to}`)?.classList.add("jam"); $(`rollers-${j.from}-${j.to}`)?.classList.add("jam"); }
   // outline the zone AutoTrack thinks the selected bag is in (solid) and the nearby zones (dashed)
   const fb = S.bags.find(b => b.id === (openBag || S.follow));
   let r = "";
   if (fb && fb.zone && NODES[fb.zone]) {
-    const n = NODES[fb.zone], h = SQ / 2 + 9;
+    const n = NODES[fb.zone], h = HS + 9;
     r += `<rect class="ring-primary" x="${n.x - h}" y="${n.y - h}" width="${2 * h}" height="${2 * h}"/>`;
     for (const z of fb.nearby || []) {
-      const m = NODES[z.zone]; if (!m) continue; const h2 = SQ / 2 + 6;
+      const m = NODES[z.zone]; if (!m) continue; const h2 = HS + 6;
       r += `<rect class="ring-near" x="${m.x - h2}" y="${m.y - h2}" width="${2 * h2}" height="${2 * h2}" opacity="${z.strength === "strong" ? .9 : z.strength === "medium" ? .6 : .35}"/>`;
     }
   }
@@ -453,8 +521,8 @@ function renderMap() {
     if (!b.belt) continue;
     seen.add(b.id);
     const A = placeBag(b.id, b), big = fb && fb.id === b.id, rect = A.g.firstElementChild;
-    const s = big ? 18 : b.status === "ON TRACK" ? 11 : 14;
-    rect.setAttribute("x", -s / 2); rect.setAttribute("y", -s / 2); rect.setAttribute("width", s); rect.setAttribute("height", s);
+    const w = big ? 20 : b.status === "ON TRACK" ? 13 : 16, h = Math.round(w * 0.7);
+    rect.setAttribute("x", -w / 2); rect.setAttribute("y", -h / 2); rect.setAttribute("width", w); rect.setAttribute("height", h);
     rect.setAttribute("fill", STATUS[b.status]);
     rect.setAttribute("class", "bag" + (big ? " followed" : ""));
     rect.firstElementChild.textContent = `${b.id} ${b.status}`;
@@ -462,13 +530,13 @@ function renderMap() {
     if (big) $("dots").appendChild(A.g);  // draw the selected bag on top
   }
   for (const [id, A] of bagAnim) if (!seen.has(id)) { A.g.remove(); bagAnim.delete(id); }
-  // BLE tags that fell off and are lying on the floor
-  const k = 1 / L.m_per_px;
+  // BLE tags that fell off, lying next to the checkpoint where they dropped
   let d = "";
   for (const t of S.fallen_tags) {
-    const x = t.x * k, y = t.y * k;
-    d += `<g><path class="fallen" d="M${x - 7},${y - 7} L${x + 7},${y + 7} M${x + 7},${y - 7} L${x - 7},${y + 7}"/>
-          <text class="fallen-text" x="${x + 10}" y="${y + 18}">${t.tag} lying here</text></g>`;
+    const n = NODES[t.zone]; if (!n) continue;
+    const x = n.x - HS - 12, y = n.y - HS - 6;
+    d += `<g><path class="fallen" d="M${x - 6},${y - 6} L${x + 6},${y + 6} M${x + 6},${y - 6} L${x - 6},${y + 6}"/>
+          <text class="fallen-text" x="${x - 4}" y="${y - 10}">${t.tag} lying here</text></g>`;
   }
   $("fallen").innerHTML = d;
 }

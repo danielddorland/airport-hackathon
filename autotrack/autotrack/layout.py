@@ -36,6 +36,19 @@ NODE_XY = {
     "GB1": (960, 160), "GB2": (960, 280), "GB3": (960, 520), "GB4": (960, 640),
 }
 
+# Where each checkpoint is DRAWN on the dashboard map: a left-to-right baggage-system schematic
+# (check-in / transfer input -> sortation -> transport spine -> make-up lanes + belt loaders),
+# so belts can be drawn with right angles and don't cross diagonally. Only the drawing uses this;
+# the BLE radio simulation keeps using NODE_XY (the organisers' positions) above.
+SCHEMATIC_XY = {
+    "IA1": (70, 110), "IA2": (70, 290), "IB1": (70, 470), "IB2": (70, 650),
+    "JA1": (250, 70), "JA2": (250, 160), "JA3": (250, 250), "JA4": (250, 340), "JA5": (380, 205),
+    "JB1": (250, 430), "JB2": (250, 520), "JB3": (250, 610), "JB4": (250, 700), "JB5": (380, 565),
+    "S1": (590, 90), "S2": (590, 190), "S3": (590, 290), "S4": (590, 470), "S5": (590, 570), "S6": (720, 660),
+    "GA1": (930, 50), "GA2": (930, 140), "GA3": (930, 230), "GA4": (930, 320),
+    "GB1": (930, 420), "GB2": (930, 510), "GB3": (930, 600), "GB4": (930, 690),
+}
+
 # Made-up demo flights: which flight each belt loader is serving this hour.
 # (Airline codes AC / WS match the organisers' gate-assignment data.)
 FLIGHTS = {
@@ -149,7 +162,8 @@ class Layout:
         """What the web page needs to draw the map."""
         belts = sorted({(u, v) for u in self.adj for v in self.adj[u]})
         return {
-            "nodes": [{"id": n, "x": NODE_XY[n][0], "y": NODE_XY[n][1], "kind": zone_kind(n),
+            "nodes": [{"id": n, "x": NODE_XY[n][0], "y": NODE_XY[n][1],
+                       "sx": SCHEMATIC_XY[n][0], "sy": SCHEMATIC_XY[n][1], "kind": zone_kind(n),
                        "name": zone_name(n), "rfid": has_rfid(n) or zone_kind(n) == "makeup",
                        "flight": FLIGHTS.get(n)} for n in self.nodes],
             "belts": [{"from": u, "to": v} for u, v in belts],

@@ -50,15 +50,23 @@ Press **Ctrl+C** in PowerShell to stop.
 Who stands where: `docs/HARDWARE.md` section 7. How it works: `docs/PRESENTING.md` section 7.
 
 1. **Same network.** All laptops on the same Wi-Fi, or all on one phone hotspot (no internet needed).
-2. **Calibrate each laptop first** (Live ESP32 page: pick "This laptop", then Measure at 2-3 distances).
-   A laptop without calibration borrows Alex's curve and gets worse distances.
+2. **Calibrate each laptop first, ON that laptop** (it measures that laptop's own Bluetooth):
+   `.venv\Scripts\python run.py --mode real --laptop daniel`, Live ESP32 page, Measure at 2-3 distances.
+   Then copy that laptop's entry from its `data/laptop_profiles.json` into the **main laptop's**
+   `data/laptop_profiles.json` (or commit and pull it) before the demo: the room only reads the main
+   laptop's file. A laptop without calibration borrows Alex's curve and gets worse distances.
+   Never change "This laptop" on the main laptop during the demo.
 3. **Main laptop** (Alex = the correct checkpoint "Loader 5 - AC 1234") runs the server and its own Bluetooth:
    ```powershell
    .venv\Scripts\python run.py --mode real --laptop alex --host 0.0.0.0
    ```
    It prints its address (e.g. `http://192.168.1.23:8000`) and the exact command for the others.
-   If **Windows Firewall** pops up: tick **Private networks** and press **Allow**
-   (otherwise the other laptops can't connect).
+   **Firewall** (otherwise the other laptops can't connect): Windows treats a new Wi-Fi or phone
+   hotspot as *Public*. On the main laptop set it to Private (Settings > Network & internet > Wi-Fi >
+   the network > Network profile type = **Private**), or tick **both** Private and Public when
+   Windows Firewall asks. No prompt (someone pressed Cancel before)? Windows Security > Firewall >
+   Allow an app: make sure `python.exe` is allowed. Check before the demo: run the reporter with
+   `--fake` on another laptop and look for `server ok`.
 4. **Every other laptop** only listens and forwards what it hears (no server, no browser needed):
    ```powershell
    .venv\Scripts\python tools\reporter.py --server http://192.168.1.23:8000 --laptop joseph
@@ -66,8 +74,8 @@ Who stands where: `docs/HARDWARE.md` section 7. How it works: `docs/PRESENTING.m
    Use your own name (`joseph`, `daniel`, `ocean`). It prints a line every 2 s,
    e.g. `heard 23 packets, median -61 dBm, server ok`. To test only the network (no tag, no bleak), add `--fake`
    and stop it again before the real demo.
-5. On the main laptop open the **Room demo** page, hold the tag still at the **centre** of the square
-   and press **Calibrate room** (8 s). Then walk the bag: Joseph's laptop = wrong loader, Alex's = correct loader.
+5. On the main laptop open the **Room demo** page (simulation OFF), hold the tag still at the **centre**
+   of the square and press **Calibrate room** (8 s; a purple crosshair on the map shows the spot). Then walk the bag: Joseph's laptop = wrong loader, Alex's = correct loader.
 6. **If anything misbehaves:** turn on the **simulation** on the Room demo page. It fakes every laptop's
    signal so the whole story still plays with zero hardware.
 

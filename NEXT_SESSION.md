@@ -6,12 +6,13 @@ Written Nov 8 from Alex's Claude Code session. Read this top to bottom on Daniel
 
 | Done (committed on `room-demo`) | Not done yet |
 |---|---|
-| `autotrack/autotrack/room.py`: combines every laptop's signal, per-laptop RSSI Kalman, RSSI→distance with each laptop's curve, **weighted least squares** trilateration (closest 3 weighted highest), position Kalman, touch checkpoints, square zone, room calibration, simulator | Review/fix pass was **interrupted**: nobody has checked the code yet except the 18 unit tests |
+| `autotrack/autotrack/room.py`: combines every laptop's signal, per-laptop RSSI Kalman, RSSI→distance with each laptop's curve, **weighted least squares** trilateration (closest 3 weighted highest), position Kalman, touch checkpoints, square zone, room calibration, simulator | Click through the Room demo tab in a browser |
 | `/api/room/*` endpoints in `server.py`; old tabs untouched | ESP32 firmware fixed at exactly 100 ms (currently 90–110 ms, fine for now) |
 | `tools/reporter.py`: runs on the other laptops, sends their readings to the main laptop (HTTP) | Reporter runs its **own** Kalman filter + sends over **UDP** (planned pipeline below) |
 | "Room demo" tab on the dashboard (map, status, timeline, Calibrate room button, Simulate button) | Real-hardware test with 3–4 laptops |
 | Joseph's calibration in `data/laptop_profiles.json` (1 m = −67.7 dBm, n = 2.16) | Calibration for the 4th laptop |
-| `tests/test_room.py`: 18/18 passing | |
+| `tests/test_room.py`: **26/26 passing** (+ test_engine 14/14, test_tagcrypto 12/12) | |
+| **Review + fix pass DONE**: 22 issues found and fixed, e.g. no false OUT OF ZONE at a corner (zone range now 3.0 m), trilateration no longer snaps to a mirror point inside the square, tag never left stuck beeping when control passes between room and single-laptop monitor, firewall advice | Page JavaScript only syntax-checked, **not clicked through in a real browser yet** |
 
 ## 1. Get the code (PowerShell, on Daniel's laptop)
 
@@ -28,7 +29,7 @@ py -m venv .venv                                   # skip if .venv already exist
 ## 2. Check it works (no hardware needed)
 
 ```powershell
-.venv\Scripts\python tests\test_room.py            # expect: 18 passed, 0 failed
+.venv\Scripts\python tests\test_room.py            # expect: 26 passed, 0 failed
 .venv\Scripts\python tests\test_engine.py
 .venv\Scripts\python run.py                        # browser opens at http://127.0.0.1:8000
 ```
@@ -72,7 +73,7 @@ Open Claude Code in the `airport-hackathon` folder and paste:
 ```
 Read NEXT_SESSION.md. We are on branch room-demo. Do these in order, run tests after each, commit each step, and push to origin room-demo:
 
-1. REVIEW + FIX: review autotrack/autotrack/room.py, server.py /api/room endpoints, tools/reporter.py and the Room demo tab in static/index.html. Run the server, turn Simulate on, confirm the story WRONG AIRCRAFT -> CHECKED IN -> OUT OF ZONE, and check that every JSON key the page uses really exists. Check the math: stronger RSSI = closer; WLS gives the closest 3 laptops the highest weight; touching any corner of the 2 m square must NOT trigger OUT OF ZONE; only the main laptop sends beep commands.
+1. QUICK CHECK (a full review + fix was already done): run all tests, start run.py, open the Room demo tab, press Simulate, and confirm WRONG AIRCRAFT -> CHECKED IN -> OUT OF ZONE shows on the page with no browser console errors. Fix anything broken.
 
 2. FIRMWARE: in autotrack/firmware/autotrack_tag/autotrack_tag.ino, advertise every 100 ms (setMinInterval/setMaxInterval 0xA0). Don't change the payload or the HMAC.
 

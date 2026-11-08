@@ -268,7 +268,8 @@ def test_zone_needs_two_adjacent_laptops_and_hold_time():
     for _ in range(50):
         run(room, clock, 0.2, far)
         d = {a["id"]: a["distance_m"] for a in room.state()["anchors"]}
-        if first_bad is None and d["alex"] > 2.5 and d["ocean"] > 2.5:
+        rng_m = room.zone["range_m"]
+        if first_bad is None and d["alex"] > rng_m and d["ocean"] > rng_m:
             first_bad = clock.t
         if room.status == "OUT OF ZONE":
             went_out = clock.t
@@ -402,6 +403,147 @@ def test_sim_runs_the_whole_story():
     assert not room.sim
 
 
+def test_wls_finds_points_outside_the_square():
+    # Gauss-Newton alone stops in a "mirror" dip inside the square for these (review finding).
+    for px, py in [(-0.5, -0.5), (3.5, 1.0), (2.5, 2.5), (-1.6, 0.0), (-1.5, -1.5), (1.0, 3.5)]:
+        d = [math.hypot(px - ax, py - ay) for ax, ay in SQUARE]
+        for ws in ([1.0] * 4, wls_weights(d, [distance_sigma(x, 4.0, 2.0) for x in d], 1.0, 0.2)):
+            x, y, _ = wls_solve(SQUARE, d, ws)
+            assert abs(x - px) < 1e-2 and abs(y - py) < 1e-2, ((px, py), (x, y))
+
+
+def test_no_out_of_zone_while_resting_on_a_corner():
+    # The far laptops read a few dB weak (a body in the way): the bag on a loader is still inside.
+    for corner in ("alex", "joseph", "daniel", "ocean"):
+        room, clock = new_room()
+        a = room.anchors[corner]
+        px, py = a["x"] + (0.03 if a["x"] < 1 else -0.03), a["y"] + (0.03 if a["y"] < 1 else -0.03)
+
+        def heard(t):
+            out = at_point(room, px, py)
+            for k in out:
+                if k != corner:
+                    out[k] -= 3.0
+            return out
+        run(room, clock, 12, heard, noise=4.0, rng=random.Random(5))
+        assert not any(e["kind"] == "zone_out" for e in room.events), (corner, room.events)
+
+
+def test_out_of_zone_stays_when_the_far_laptops_lose_the_tag():
+    room, clock = new_room()
+    run(room, clock, 2, at_point(room, 1, 1))
+    run(room, clock, 7, at_point(room, 3.5, 1.0))          # filter lag + 2 s hold
+    assert room.status == "OUT OF ZONE"
+    # carried further: alex and ocean (the far pair) stop hearing it - it is NOT back inside
+    run(room, clock, 6, {k: v for k, v in at_point(room, 5.0, 1.0).items() if k in ("joseph", "daniel")})
+    assert room.status == "OUT OF ZONE", room.status
+    run(room, clock, 5, at_point(room, 1, 1))
+    assert room.status == "ON TRACK"
+
+
+class _FakeBLE:
+    """Records tag commands; each write takes `delay` seconds (real time)."""
+    def __init__(self, delay=0.0):
+        self.sent, self.delay, self.status = [], delay, {}
+
+    async def set_alert(self, tag, mode):
+        self.sent.append(mode)
+        await asyncio.sleep(self.delay)
+        return True
+
+
+def test_room_resends_after_taking_control_back():
+    async def go():
+        room, clock = new_room()
+        room.ble = _FakeBLE()
+        run(room, clock, 2, at_point(room, 1, 1))
+        await asyncio.sleep(0.01)
+        run(room, clock, 4, at_point(room, 1.97, 0.03))          # WRONG AIRCRAFT -> mode 1
+        await asyncio.sleep(0.01)
+        assert room.controls_tag() and room.ble.sent == [0, 1]
+        run(room, clock, 5, {"alex": rssi_at(room, "alex", 1.4)})   # the reporters drop out
+        assert not room.controls_tag()        # LiveTagMonitor takes over (and re-sends its mode)
+        room.ble.sent.append("livetag")       # pretend it changed the tag
+        run(room, clock, 3, at_point(room, 1.97, 0.03))          # reporters back: room in charge again
+        await asyncio.sleep(0.01)
+        assert room.ble.sent[-1] == 1, room.ble.sent   # re-sent what it wants, not "already sent"
+        room.set_sim(True)
+        assert not room.controls_tag()        # simulating: the real tag is left to LiveTagMonitor
+        room.set_sim(False)
+        room.configure({"enabled": False})
+        assert not room.controls_tag()
+    asyncio.run(go())
+
+
+def test_slow_ok_write_is_not_cut_short_by_mode_0():
+    async def go():
+        room, clock = new_room()
+        room.ble = _FakeBLE(delay=0.3)
+        run(room, clock, 2, at_point(room, 1, 1))
+        await asyncio.sleep(0.4)
+        run(room, clock, 4, at_point(room, 1.97, 0.03))
+        await asyncio.sleep(0.4)
+        run(room, clock, 4, at_point(room, 0.03, 0.03))          # check-in: mode 2 starts...
+        run(room, clock, 4, at_point(room, 1, 1))                # ...still writing after OK_MODE_S
+        await asyncio.sleep(0.4)
+        run(room, clock, 1, at_point(room, 1, 1))
+        await asyncio.sleep(0.4)
+        return room.ble.sent
+    sent = asyncio.run(go())
+    assert sent == [0, 1, 2], sent
+
+
+def test_livetag_resends_its_mode_when_the_room_lets_go():
+    from autotrack.livetag import LiveTagMonitor
+
+    async def go():
+        flag = {"room": True}
+        ble = _FakeBLE()
+        mon = LiveTagMonitor(ble=ble, laptops=Laptops(active="alex", log=quiet), log=quiet,
+                             suppress=lambda: flag["room"])
+        mon._check()
+        await asyncio.sleep(0.01)
+        assert ble.sent == []
+        flag["room"] = False
+        mon._check()
+        await asyncio.sleep(0.01)
+        return ble.sent
+    assert asyncio.run(go()) == [0]
+
+
+def test_calibration_skips_laptop_on_the_spot_and_refuses_in_sim():
+    room, clock = new_room()
+    run(room, clock, 1, {"joseph": -40.0})               # only joseph online
+    room.start_calibration(seconds=3)
+    assert room.calib["point"] == {"x": 1.0, "y": 1.0}    # the square's centre, not joseph's spot
+    room2, clock2 = new_room()
+    run(room2, clock2, 1, at_point(room2, 2.0, 0.0))
+    room2.start_calibration(2.0, 0.0, 3)                 # the spot IS joseph's laptop
+    run(room2, clock2, 4, at_point(room2, 2.0, 0.0))
+    res = {r["id"]: r for r in room2.calib["results"]}
+    assert res["joseph"]["offset_db"] is None and room2.anchors["joseph"]["offset_db"] == 0.0
+    assert res["alex"]["offset_db"] is not None
+    room2.set_sim(True)
+    for fn in (lambda: room2.start_calibration(1, 1, 3), lambda: room2.capture_touch("alex")):
+        try:
+            fn()
+            raise AssertionError("should refuse while simulating")
+        except ValueError:
+            pass
+
+
+def test_sim_out_of_zone_with_three_laptops():
+    room, clock = new_room()
+    room.configure({"anchors": {"ocean": None}})
+    room.set_sim(True)
+    kinds = set()
+    for _ in range(int(60 / 0.2)):
+        clock.t += 0.2
+        room.tick()
+        kinds |= {e["kind"] for e in room.events}
+    assert {"wrong", "checkin", "zone_out"} <= kinds, kinds
+
+
 # --------------------------------------------------------------- HTTP endpoints
 
 def test_http_endpoints():
@@ -427,9 +569,17 @@ def test_http_endpoints():
         assert c.post("/api/room/sim", json={"on": True}).json()["sim"] is True
         assert c.post("/api/room/reset", json={}).status_code == 200
         assert c.post("/api/room/touch", json={"id": "daniel"}).status_code == 400   # no packets yet
-        assert c.post("/api/room/calibrate", json={"x": 1, "y": 1, "seconds": 3}).json()["calibration"]["phase"] == "running"
+        # calibrating / setting touch in the simulator would save fake numbers: refused
+        assert c.post("/api/room/calibrate", json={"x": 1, "y": 1, "seconds": 3}).status_code == 400
         assert c.post("/api/room/beep", json={"mode": 3}).json()["ok"] is False      # not real mode
         assert c.post("/api/room/sim", json={"on": False}).json()["sim"] is False
+        assert c.post("/api/room/sightings", json={"laptop": "joseph", "packets": [{"age_ms": 0, "rssi": -60}]}).json()["accepted"] == 1
+        assert c.post("/api/room/calibrate", json={"x": 1, "y": 1, "seconds": 3}).json()["calibration"]["phase"] == "running"
+        # a bad config patch is refused WITHOUT changing anything
+        x0 = next(a["x"] for a in c.get("/api/room").json()["anchors"] if a["id"] == "alex")
+        assert c.post("/api/room/config", json={"anchors": {"alex": {"x": 0.7, "y": "bad"}}}).status_code == 400
+        assert next(a["x"] for a in c.get("/api/room").json()["anchors"] if a["id"] == "alex") == x0
+        assert c.post("/api/room/config", json={"anchors": [1]}).status_code == 400
         # the old endpoints still work
         assert c.get("/api/livetag").status_code == 200
         s = c.get("/api/state")

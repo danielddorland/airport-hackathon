@@ -141,7 +141,9 @@ class Reporter:
         if self.server_ok is not False:
             self.log(f"{stamp()} cannot reach the main laptop at {self.server}: {why}")
             self.log("         -> Is run.py running there with --host 0.0.0.0? Same Wi-Fi? "
-                     "Windows Firewall on the main laptop: allow Python on private networks.")
+                     "On the main laptop: set this Wi-Fi/hotspot's network profile to Private "
+                     "(Settings > Network & internet > Wi-Fi > the network > Network profile type), "
+                     "and in Windows Security > Firewall > Allow an app make sure python.exe is allowed.")
         self.server_ok = False
         self.last_error = why
 
@@ -248,9 +250,13 @@ def warn_if_uncalibrated(laptop):
         return
     p = profiles.get(laptop)
     if not p or not p.get("calibrated"):
-        print(f"Note: laptop '{laptop}' is not calibrated in data/laptop_profiles.json, so the main "
-              "laptop will use Alex's curve for it. Calibrate it first for better distances "
-              "(Live ESP32 page on the main laptop, or measure here and copy the numbers).")
+        print(f"Note: laptop '{laptop}' is not calibrated in this laptop's data/laptop_profiles.json. "
+              "The room only uses the curves stored on the MAIN laptop, and uses Alex's curve for "
+              "any laptop it doesn't know. To calibrate: on THIS laptop run "
+              f"'.venv\\Scripts\\python run.py --mode real --laptop {laptop}', open the Live ESP32 page, "
+              "press Measure at 2-3 distances, then copy the '" + laptop + "' entry from this laptop's "
+              "data/laptop_profiles.json into the main laptop's data/laptop_profiles.json (or commit "
+              "and pull it) BEFORE starting the main laptop.")
 
 
 async def run(args):

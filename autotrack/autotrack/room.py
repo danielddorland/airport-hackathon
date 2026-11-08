@@ -49,6 +49,9 @@ POS_RESET_S = 5.0           # forget the position after 5 s without a fix
 TOUCH_M = 0.12              # default "touching" distance
 TOUCH_ON_TICKS, TOUCH_OFF_TICKS, TOUCH_OFF_DB = 2, 3, 4.0
 ZONE_CLEAR_S = 3.0          # OUT OF ZONE clears after 3 s with no violating pair
+NEAR_M = 0.5                # a tag this close to a laptop (or touching one) is inside the zone, full stop
+CALIB_MIN_M = 0.5           # "Calibrate room" skips laptops closer than this to the spot (log10 of ~0 is useless)
+GRID_STEP_M, GRID_MARGIN_M = 0.25, 3.0   # trilateration: coarse search grid before Gauss-Newton
 OK_MODE_S = 3.0             # how long we "want" mode 2 (OK) after a check-in
 RETRY_S = 5.0               # resend a tag command that failed after this long
 TRAIL_LEN = 40
@@ -64,7 +67,11 @@ DEFAULT_ANCHORS = {
     "ocean":  {"x": 0.0, "y": 2.0, "role": "corner", "label": "Corner D", "flight": "", "order": 3},
 }
 DEFAULT_BAG = {"tag": "TAG-0001", "flight": "AC 1234", "booking": "DSX42K", "plate": "AC123456"}
-DEFAULT_ZONE = {"range_m": 2.5, "hold_s": 2.0}
+# range_m must be MORE than the square's diagonal (2.83 m for a 2 m square): with the tag at one
+# corner the far corner is 2.83 m away, and a few dB of signal noise must not make the two far
+# laptops look "out of range" while the bag sits on a loader. 3.0 m still catches a bag carried
+# 1.5 m outside the square.
+DEFAULT_ZONE = {"range_m": 3.0, "hold_s": 2.0}
 DEFAULT_WEIGHTS = {"closest3": 1.0, "others": 0.2}
 
 
@@ -89,24 +96,15 @@ def wls_weights(dists, sigmas, closest3=1.0, others=0.2):
     return [w * (closest3 if i in closest else others) for i, w in enumerate(base)]
 
 
-def wls_solve(anchors, dists, weights, iters=15):
-    """Weighted least squares trilateration (Gauss-Newton).
+def _wls_cost(anchors, dists, weights, px, py):
+    """How badly point (px, py) fits: sum of w_i * (distance to laptop i - measured d_i)^2."""
+    return sum(w * (math.hypot(px - ax, py - ay) - d) ** 2 for (ax, ay), d, w in zip(anchors, dists, weights))
 
-    anchors: [(x, y)], dists: [d], weights: [w]. Minimises sum w_i * (|p - a_i| - d_i)^2.
-    Starts at the weighted centroid of the anchors. Returns (x, y, sigma_m) or None.
-    sigma_m = rough position uncertainty from the inverse of J^T W J, clamped to 0.1-3 m.
-    """
-    if len(anchors) < 3 or sum(weights) <= 0:
-        return None
-    sw = sum(weights)
-    x = sum(w * a[0] for w, a in zip(weights, anchors)) / sw
-    y = sum(w * a[1] for w, a in zip(weights, anchors)) / sw
 
-    def cost(px, py):
-        return sum(w * (math.hypot(px - ax, py - ay) - d) ** 2 for (ax, ay), d, w in zip(anchors, dists, weights))
-
+def _gauss_newton(anchors, dists, weights, x, y, iters):
+    """Walk downhill from (x, y). Returns (x, y, cost, (a11, a12, a22)) or None."""
     h = (0.0, 0.0, 0.0)
-    c = cost(x, y)
+    c = _wls_cost(anchors, dists, weights, x, y)
     for _ in range(iters):
         # Build the 2x2 normal equations  (J^T W J) step = -J^T W r
         a11 = a12 = a22 = b1 = b2 = 0.0
@@ -134,7 +132,7 @@ def wls_solve(anchors, dists, weights, iters=15):
         # Only take the step if it makes the fit better; otherwise try half a step (up to 8 times).
         f = 1.0
         for _try in range(8):
-            nc = cost(x + f * sx, y + f * sy)
+            nc = _wls_cost(anchors, dists, weights, x + f * sx, y + f * sy)
             if nc <= c:
                 break
             f *= 0.5
@@ -143,7 +141,35 @@ def wls_solve(anchors, dists, weights, iters=15):
         x, y, c = x + f * sx, y + f * sy, nc
         if step * f < 1e-4:
             break
-    a11, a12, a22 = h
+    return x, y, c, h
+
+
+def wls_solve(anchors, dists, weights, iters=15):
+    """Weighted least squares trilateration (Gauss-Newton).
+
+    anchors: [(x, y)], dists: [d], weights: [w]. Minimises sum w_i * (|p - a_i| - d_i)^2.
+    Gauss-Newton only walks downhill, so from one start it can stop in a "mirror" dip (for
+    example inside the square when the tag is really outside). So we first try a coarse grid
+    (every 0.25 m, the laptops' box + 3 m around it), then refine from the best grid point AND
+    from the weighted centroid of the anchors, and keep whichever fits best.
+    Returns (x, y, sigma_m) or None.
+    sigma_m = rough position uncertainty from the inverse of J^T W J, clamped to 0.1-3 m.
+    """
+    if len(anchors) < 3 or sum(weights) <= 0:
+        return None
+    sw = sum(weights)
+    starts = [(sum(w * a[0] for w, a in zip(weights, anchors)) / sw,
+               sum(w * a[1] for w, a in zip(weights, anchors)) / sw)]
+    x0, x1 = min(a[0] for a in anchors) - GRID_MARGIN_M, max(a[0] for a in anchors) + GRID_MARGIN_M
+    y0, y1 = min(a[1] for a in anchors) - GRID_MARGIN_M, max(a[1] for a in anchors) + GRID_MARGIN_M
+    nx, ny = int((x1 - x0) / GRID_STEP_M) + 1, int((y1 - y0) / GRID_STEP_M) + 1
+    best = min(((x0 + i * GRID_STEP_M, y0 + j * GRID_STEP_M) for i in range(nx) for j in range(ny)),
+               key=lambda p: _wls_cost(anchors, dists, weights, p[0], p[1]))
+    starts.append(best)
+    sols = [s for s in (_gauss_newton(anchors, dists, weights, x, y, iters) for x, y in starts) if s]
+    if not sols:
+        return None
+    x, y, _c, (a11, a12, a22) = min(sols, key=lambda s: s[2])
     det = a11 * a22 - a12 * a12
     if det <= 0:
         sigma = 3.0
@@ -430,6 +456,7 @@ class Room:
         self.last_write = None
         self._last_try = None            # (mode, ok, t)
         self._inflight = None
+        self._in_control = False         # did the room drive the tag on the last tick?
         self._derived = {}               # per-tick numbers per laptop for the page
 
     def _add_anchor(self, aid):
@@ -505,10 +532,16 @@ class Room:
         return [k for k, lv in self.live.items()
                 if k in self.anchors and lv.last_t is not None and now - lv.last_t <= ONLINE_S]
 
+    def _wants_control(self, now):
+        """The room drives the real tag when it's on, not simulating, and 2+ laptops hear the tag."""
+        return self.enabled and not self.sim and len(self.online_ids(now)) >= 2
+
     def controls_tag(self):
-        """True when the room (not the single-laptop monitor) should send tag commands."""
+        """True when the room (not the single-laptop monitor) should send tag commands.
+        When this turns False again, LiveTagMonitor re-sends its own mode (see livetag.py),
+        so the tag never stays stuck in the room's last mode."""
         with self.lock:
-            return self.enabled and len(self.online_ids()) >= 2
+            return self._wants_control(self.clock())
 
     # ------------------------------------------------------------------ the main loop
     def tick(self, now=None):
@@ -518,7 +551,13 @@ class Room:
                 self._sim_inject(now)
             self._tick(now)
             self._calib_check(now)
-            if self.enabled:
+            ctl = self._wants_control(now)
+            if ctl and not self._in_control:
+                # We (re)take charge: the other system may have changed the tag meanwhile,
+                # so forget what we sent before and send what we want now.
+                self._last_try = None
+            self._in_control = ctl
+            if ctl:
                 self._maybe_send(now)
 
     def _tick(self, now):
@@ -583,6 +622,12 @@ class Room:
         # ---- zone: two NEIGHBOURING laptops both too far
         dist = {k: v["distance_m"] for k, v in derived.items()}
         bad = violating_pairs(zone_pairs(self._ordered()), dist, online, self.zone["range_m"])
+        # A tag touching (or right next to) a laptop is inside the square by definition: ignore
+        # the far laptops then, so signal noise can't turn a check-in into OUT OF ZONE.
+        near = any(lv.touch.touching for k, lv in self.live.items() if k in self.anchors) or any(
+            v["distance_m"] is not None and v["distance_m"] < NEAR_M for v in derived.values())
+        if near:
+            bad = []
         for pair in list(self._viol_since):
             if pair not in bad:
                 del self._viol_since[pair]
@@ -599,7 +644,10 @@ class Room:
                                    f"{self.zone['range_m']:.1f} m", now)
         elif held:
             self.violating = list(held[0])
-        elif self.out_of_zone and (self._last_viol_t is None or now - self._last_viol_t >= ZONE_CLEAR_S):
+        elif self.out_of_zone and (self._last_viol_t is None or now - self._last_viol_t >= ZONE_CLEAR_S) \
+                and (near or all(online.get(k, k not in self.anchors) for k in self.violating or ())):
+            # Only clear once the laptops that raised the alarm hear the tag again (closer):
+            # if the bag was carried even further and they lost it, it is NOT back inside.
             self.out_of_zone = False
             self.violating = None
             self._note("zone_in", "Back inside the zone", now)
@@ -655,16 +703,19 @@ class Room:
     # ------------------------------------------------------------------ tag commands
     def _maybe_send(self, now):
         """Send tag_mode to the tag when it changes (never blocks: runs as a background task)."""
-        if self.ble is None or self.sim or len(self.online_ids(now)) < 2:
+        if self.ble is None:
             return
         want = self.tag_mode
         if self._inflight == want:
             return
+        if want == MODE_NORMAL and self._inflight == MODE_OK:
+            return              # a slow OK write is still going: let it finish (the tag returns to normal after OK)
         last = self._last_try
         if last is not None and last[0] == want and (last[1] or now - last[2] < RETRY_S):
             return
         if want == MODE_NORMAL and last is not None and last[0] == MODE_OK and last[1]:
             return              # after OK (green + chirp) the tag goes back to normal by itself
+                                # (if the OK write FAILED we do send 0, so a red tag doesn't stay red)
         self._inflight = want
         self._last_try = (want, False, now)
         self._spawn(self._send(want, "auto"))
@@ -707,23 +758,31 @@ class Room:
 
     # ------------------------------------------------------------------ settings
     def configure(self, patch):
-        """Partial update from POST /api/room/config. Raises ValueError on bad input."""
+        """Partial update from POST /api/room/config. Raises ValueError on bad input.
+        Everything is checked first and only then applied, so a bad patch changes nothing."""
         if not isinstance(patch, dict):
             raise ValueError("body must be a JSON object")
+
+        def obj(key):
+            v = patch.get(key) or {}
+            if not isinstance(v, dict):
+                raise ValueError(f"'{key}' must be an object")
+            return v
+
         with self.lock:
-            if "enabled" in patch:
-                self.enabled = bool(patch["enabled"])
-            for aid, a in (patch.get("anchors") or {}).items():
+            anchors = {k: dict(v) for k, v in self.anchors.items()}     # work on a copy
+            removed = []
+            for aid, a in obj("anchors").items():
                 aid = slug(aid)
                 if a is None:
-                    self.anchors.pop(aid, None)
-                    self.live.pop(aid, None)
+                    anchors.pop(aid, None)
+                    removed.append(aid)
                     continue
                 if not isinstance(a, dict):
                     raise ValueError(f"anchor {aid} must be an object or null")
-                cur = self.anchors.get(aid)
+                cur = anchors.get(aid)
                 if cur is None:
-                    order = max([v["order"] for v in self.anchors.values()] or [-1]) + 1
+                    order = max([v["order"] for v in anchors.values()] or [-1]) + 1
                     cur = self._clean_anchor({"label": f"{self._name(aid)}'s laptop", "order": order}, order)
                 if "role" in a and a["role"] not in ROLES:
                     raise ValueError("role must be correct, wrong or corner")
@@ -738,19 +797,29 @@ class Room:
                 if "touch_dbm" in a:
                     cur["touch_dbm"] = None if a["touch_dbm"] is None else float(a["touch_dbm"])
                 cur["sigma_db"] = max(0.5, min(20.0, cur["sigma_db"]))
-                self.anchors[aid] = cur
-            z = patch.get("zone") or {}
+                anchors[aid] = cur
+            zone = dict(self.zone)
+            z = obj("zone")
             if "range_m" in z:
-                self.zone["range_m"] = max(0.3, min(15.0, float(z["range_m"])))
+                zone["range_m"] = max(0.3, min(15.0, float(z["range_m"])))
             if "hold_s" in z:
-                self.zone["hold_s"] = max(0.0, min(30.0, float(z["hold_s"])))
+                zone["hold_s"] = max(0.0, min(30.0, float(z["hold_s"])))
+            bag = dict(self.bag)
+            b = obj("bag")
             for key in ("tag", "flight", "booking", "plate"):
-                if key in (patch.get("bag") or {}):
-                    self.bag[key] = str(patch["bag"][key]).strip()[:40]
-            w = patch.get("weights") or {}
+                if key in b:
+                    bag[key] = str(b[key]).strip()[:40]
+            weights = dict(self.weights)
+            w = obj("weights")
             for key in ("closest3", "others"):
                 if key in w:
-                    self.weights[key] = max(0.0, min(10.0, float(w[key])))
+                    weights[key] = max(0.0, min(10.0, float(w[key])))
+            # All good: apply.
+            if "enabled" in patch:
+                self.enabled = bool(patch["enabled"])
+            self.anchors, self.zone, self.bag, self.weights = anchors, zone, bag, weights
+            for aid in removed:
+                self.live.pop(aid, None)
             self.save()
             return self.state()
 
@@ -767,15 +836,19 @@ class Room:
         with self.lock:
             if self.calib["phase"] == "running":
                 raise ValueError("a calibration is already running")
+            if self.sim:
+                # Simulated numbers would be saved to data/room.json and used in the real demo.
+                raise ValueError("turn the simulator off first (calibration needs the real tag)")
             seconds = max(2.0, min(30.0, float(seconds)))
             if x is None or y is None:
-                ids = self.online_ids(now)
-                if not ids:
+                if not self.online_ids(now):
                     self.calib = {"phase": "error", "progress": 0.0, "point": None, "results": [],
                                   "message": "No laptop hears the tag - switch it on and try again."}
                     return
-                x = sum(self.anchors[k]["x"] for k in ids) / len(ids)
-                y = sum(self.anchors[k]["y"] for k in ids) / len(ids)
+                # Default spot = the middle of the whole layout (the centre of the square), even if
+                # some laptops aren't online yet - that's where people naturally hold the tag.
+                x = sum(a["x"] for a in self.anchors.values()) / len(self.anchors)
+                y = sum(a["y"] for a in self.anchors.values()) / len(self.anchors)
             self._calib_buf = {}
             self._calib_start, self._calib_end = now, now + seconds
             self.calib = {"phase": "running", "progress": 0.0, "point": {"x": round(float(x), 3), "y": round(float(y), 3)},
@@ -798,7 +871,9 @@ class Room:
             d = math.hypot(px - a["x"], py - a["y"])
             row = {"id": aid, "median": None, "sigma_db": None, "packets": len(got),
                    "distance_m": round(d, 2), "rssi_1m_profile": p["rssi_1m"], "offset_db": None}
-            if len(got) >= 5:
+            if d < CALIB_MIN_M:
+                row["note"] = "too close to the calibration spot"
+            elif len(got) >= 5:
                 med = statistics.median(got)
                 sig = max(1.5, statistics.pstdev(got))
                 off = calibration_offset(med, d, p["rssi_1m"], p["n"])
@@ -807,17 +882,21 @@ class Room:
                 done.append(f"{self._name(aid)} {off:+.1f} dB (noise {sig:.1f} dB)")
             results.append(row)
         self._calib_buf = None
-        skipped = [r["id"] for r in results if r["offset_db"] is None]
+        close = [r["id"] for r in results if r.get("note")]
+        skipped = [r["id"] for r in results if r["offset_db"] is None and not r.get("note")]
         if done:
             self.save()
             msg = "Room calibrated: " + ", ".join(done)
             if skipped:
                 msg += ". Not enough packets from: " + ", ".join(skipped)
+            if close:
+                msg += f". Skipped (closer than {CALIB_MIN_M:.1f} m to the spot): " + ", ".join(close)
             self.calib.update(phase="done", progress=1.0, message=msg, results=results)
             self._note("calib", msg, now)
         else:
             self.calib.update(phase="error", progress=1.0, results=results,
-                              message="Not enough packets from any laptop (need 5 each). Is the tag on?")
+                              message="Not enough packets from any laptop (need 5 each, at least "
+                                      f"{CALIB_MIN_M:.1f} m from the spot). Is the tag on?")
 
     def capture_touch(self, aid, now=None):
         """The tag is touching laptop `aid` right now: touch level = median of the last 2 s - 3 dB."""
@@ -826,6 +905,8 @@ class Room:
         with self.lock:
             if aid not in self.anchors:
                 raise ValueError(f"unknown laptop '{aid}'")
+            if self.sim:
+                raise ValueError("turn the simulator off first (the touch level must come from the real tag)")
             lv = self.live.get(aid)
             got = [r for t, r in (lv.packets if lv else []) if now - 2.0 <= t <= now + 0.5]
             if len(got) < 5:
@@ -875,13 +956,32 @@ class Room:
         wrong = next((k for k in ids if self.anchors[k]["role"] == "wrong"), None)
         correct = next((k for k in ids if self.anchors[k]["role"] == "correct"), None)
         w, c = at(wrong, centre), at(correct, centre)
-        # 1.5 m outside the edge between the 2nd and 3rd laptop (or any edge if fewer)
+        # 1.5 m outside the square. Normally past the edge between the 2nd and 3rd laptop; with
+        # only 3 laptops some sides can't raise OUT OF ZONE (no neighbour pair is far from the tag
+        # there), so we also try 1.5 m outside each side of the laptops' box and keep the first
+        # spot whose "far pair" is furthest from the tag.
         if len(ids) >= 2:
-            a, b = pts[ids[1 % len(ids)]], pts[ids[2 % len(ids)]]
-            mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
-            dx, dy = mx - cx, my - cy
-            r = math.hypot(dx, dy) or 1.0
-            out = (mx + dx / r * 1.5, my + dy / r * 1.5)
+            pairs = zone_pairs(ids)
+
+            def outside(i):
+                a, b = pts[ids[i % len(ids)]], pts[ids[(i + 1) % len(ids)]]
+                mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+                dx, dy = mx - cx, my - cy
+                r = math.hypot(dx, dy) or 1.0
+                return mx + dx / r * 1.5, my + dy / r * 1.5
+
+            def far_pair(p):
+                return max(min(math.hypot(p[0] - pts[a][0], p[1] - pts[a][1]),
+                               math.hypot(p[0] - pts[b][0], p[1] - pts[b][1])) for a, b in pairs)
+
+            xs, ys = [p[0] for p in pts.values()], [p[1] for p in pts.values()]
+            mx, my = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+            cands = [outside(i) for i in list(range(1, len(ids))) + [0]] + [
+                (min(xs) - 1.5, my), (mx, max(ys) + 1.5), (max(xs) + 1.5, my), (mx, min(ys) - 1.5)]
+            out = cands[0]
+            for p in cands[1:]:
+                if far_pair(p) > far_pair(out) + 0.01:
+                    out = p
         else:
             out = (cx + 3.0, cy)
         script = [(6, centre, centre), (6, centre, w), (4, w, w), (8, w, c), (4, c, c),

@@ -198,7 +198,7 @@ not changed; the correction is stored per room in `data/room.json`.
 **The checks.** "Touching" a laptop = its signal above that laptop's touch level for a moment
 (with hysteresis so it doesn't flicker). Touching the wrong loader (Joseph, AC 857) = WRONG AIRCRAFT,
 latched until the bag touches the correct loader (Alex, AC 1234) = CHECKED IN. If two neighbouring
-laptops both say the tag is more than 2.5 m away for 2 seconds, it has left the square = OUT OF ZONE.
+laptops both say the tag is more than 3 m away for 2 seconds, it has left the square = OUT OF ZONE.
 Only the main laptop sends the beep/flash command to the tag.
 
 **What is approximate (say this out loud).** This is Bluetooth signal strength, not UWB or GPS.

@@ -82,7 +82,10 @@ def main():
         print(" On each OTHER laptop run (change the name to whose laptop it is):")
         ip = ips[0] if ips else "<this laptop's IP>"
         print(f"     .venv\\Scripts\\python tools\\reporter.py --server http://{ip}:{a.port} --laptop joseph")
-        print(" If Windows Firewall asks: tick Private networks and press Allow.")
+        print(" Firewall: set this Wi-Fi/hotspot to a PRIVATE network (Settings > Network & internet >")
+        print(" Wi-Fi > the network > Network profile type = Private), or tick BOTH Private and Public")
+        print(" when Windows Firewall asks. No prompt? Windows Security > Firewall > Allow an app: python.exe.")
+        print(" Check from another laptop: reporter.py ... --fake should print 'server ok'.")
     print(" Press Ctrl+C to stop.")
     print("=" * 60, flush=True)
     if not a.no_browser:

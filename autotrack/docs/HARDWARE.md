@@ -267,17 +267,23 @@ where the tag is in the square and which laptop it is touching.
 
 | Laptop | Position | Role | What it runs |
 |---|---|---|---|
-| **Alex** | (0, 0) | correct checkpoint: Loader 5, serves AC 1234 | `run.py --mode real --laptop alex --host 0.0.0.0` (server + Bluetooth) |
-| **Joseph** | (2, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
-| **Daniel** | (2, 2) | corner (helps locate the tag) | `tools\reporter.py ... --laptop daniel` |
-| **Ocean** | (0, 2) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop ocean` |
+| **Alex** | (0, 0) | correct checkpoint: Loader 5, serves AC 1234 | `.venv\Scripts\python run.py --mode real --laptop alex --host 0.0.0.0` (server + Bluetooth) |
+| **Joseph** | (2, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `.venv\Scripts\python tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
+| **Daniel** | (2, 2) | corner (helps locate the tag) | `.venv\Scripts\python tools\reporter.py --server http://<alex-ip>:8000 --laptop daniel` |
+| **Ocean** | (0, 2) | corner (optional 4th laptop) | `.venv\Scripts\python tools\reporter.py --server http://<alex-ip>:8000 --laptop ocean` |
 
 The bag is booked on **AC 1234**. Touching it to Joseph's laptop = WRONG AIRCRAFT
 (tag flashes red and beeps). Moving it to Alex's laptop = CHECKED IN (beeping stops,
 green blink). Carrying it out of the square = OUT OF ZONE (beeps until it's back).
 
 Positions and roles can be changed on the Room demo page; they are saved in `data/room.json`.
-With only 3 laptops leave Ocean out: the triangle Alex - Joseph - Daniel still works.
+With only 3 laptops leave Ocean out: the triangle Alex - Joseph - Daniel still works for the
+position and the wrong/correct loader story. OUT OF ZONE needs two NEIGHBOURING laptops that are
+both far from the tag, so with 3 laptops walk out past Ocean's empty side (the left, x < 0) or
+the top (y > 2). Walking out past the Alex-Joseph or Joseph-Daniel side is NOT detected
+(one of the laptops on that side is still close). With all 4 laptops every side works.
+The zone range (default 3.0 m) must stay above the square's diagonal (2.83 m for 2 m),
+or a bag resting on a loader can look "out of zone".
 
 ### Physical setup checklist
 
@@ -290,18 +296,26 @@ With only 3 laptops leave Ocean out: the triangle Alex - Joseph - Daniel still w
 - **Nothing in between**: no bags, metal or people standing between the tag and the laptops
   while calibrating. Human bodies block 2.4 GHz noticeably (about 5-10 dB).
 - **Plugged in, no sleep** (see Troubleshooting above) and Bluetooth **on** for every laptop.
-- **Same network**: one Wi-Fi or one phone hotspot for everyone. On the main laptop allow
-  Python through **Windows Firewall** on private networks when it asks.
+- **Same network**: one Wi-Fi or one phone hotspot for everyone. Windows treats a new Wi-Fi or
+  hotspot as *Public*: on the main laptop set it to **Private** (Settings > Network & internet >
+  Wi-Fi > the network > Network profile type), or tick **both** Private and Public when Windows
+  Firewall asks. No prompt? Windows Security > Firewall > Allow an app: allow `python.exe`.
+  Test it: `.venv\Scripts\python tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph --fake`
+  on another laptop must print `server ok` (stop it again before the real demo).
 - **Tag**: the ESP32 on the bag, powered from a power bank, antenna side not covered by your hand.
 
 ### Order of steps on the day
 
-1. Each laptop calibrated on its own (Live ESP32 page > Measure at 0.3 m, 1 m, 3 m). Joseph's is already
-   in `data/laptop_profiles.json`.
+1. Each laptop calibrated ON that laptop (`.venv\Scripts\python run.py --mode real --laptop daniel`,
+   Live ESP32 page > Measure at 0.3 m, 1 m, 3 m). Then copy its entry from that laptop's
+   `data/laptop_profiles.json` into the **main laptop's** `data/laptop_profiles.json` (or commit and pull):
+   the room only reads the main laptop's file. Joseph's is already in it. Don't change "This laptop"
+   on the main laptop afterwards.
 2. Start the main laptop, then the reporters. Each reporter should print `server ok` and about
    20-40 packets per 2 s.
 3. On the Room demo page every laptop shows **online**.
-4. Hold the tag still at the centre (1, 1) and press **Calibrate room** (8 s). This measures each
+4. Simulation OFF. Hold the tag still at the centre (1, 1) (shown as a purple crosshair on the map) and
+   press **Calibrate room** (8 s). This measures each
    laptop's noise and a small correction for "this laptop in this room".
 5. Hold the tag against each loader laptop once and press its **touch** button, so "touching" is
    detected from that laptop's real signal.

@@ -143,7 +143,7 @@
       <div class="side">
         <div class="card">
           <h3>Calibrate room (noise floor)</h3>
-          <p class="note" style="margin:6px 0">Hold the tag <b>still</b> at the crosshair (pick a spot on the map, or leave it to use the centre of the laptops) and press the button.
+          <p class="note" style="margin:6px 0">Hold the tag <b>still</b> at the crosshair (pick a spot on the map, or leave it to use the centre of the square) and press the button. Turn the simulation off first.
             Every laptop records the signal. Because we know the real distance to the spot, the standard formula
             RSSI = A &minus; 10&middot;n&middot;log10(d) tells us each laptop's true 1 m level (A), and the wobble of the signal is its noise floor.</p>
           <div class="row">
@@ -188,7 +188,9 @@
             <label>Booking ref <input id="roombbook" placeholder="DSX42K"></label>
             <label>Bag tag number <input id="roombplate" placeholder="AC123456"></label>
           </div>
-          <p class="note" style="margin-top:10px"><b>Out of zone</b> = two laptops next to each other both think the tag is further than the zone range, for longer than the hold time.
+          <p class="note" style="margin-top:10px"><b>Out of zone</b> = two laptops next to each other both think the tag is further than the zone range, for longer than the hold time
+            (the red flashing side on the map is that pair - the far side, opposite where the bag left). Keep the range above the square's diagonal (2.83 m for a 2 m square, default 3.0 m),
+            or a bag resting on a loader can look out of zone. Never while the tag touches a laptop.
             <b>Weights</b>: how much the 3 closest laptops count compared with the others when working out the position.</p>
         </div>
 
@@ -915,7 +917,7 @@ const ROOM_HELP = {
 let R = null;              // last /api/room answer (null = none yet, or the server isn't running the room demo)
 let roomErr = null;        // why the last poll failed
 let roomMapMode = "view";  // "view" | "pick" | "move"
-let roomPick = null;       // calibration spot picked on the map {x, y}; null = centre of the online laptops
+let roomPick = null;       // calibration spot picked on the map {x, y}; null = centre of the square (all laptops)
 let roomDrag = null;       // laptop being dragged {id, x, y, ox, oy, pointerId, moved}
 let roomDrop = null;       // laptop just dropped {id, x, y}: drawn there until the server confirms
 let roomView = null;       // map scale: metres -> SVG units {x0, x1, y0, y1, s, W, H}
@@ -1048,10 +1050,11 @@ function roomRenderMap() {
     const zc = zone.inside === false ? " out" : zone.inside === true ? " in" : "";
     s += `<polygon class="room-zone${zc}" points="${square.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
   }
-  // the pair of neighbouring laptops that both say "too far" (the edge the tag left through)
+  // the pair of neighbouring laptops that BOTH say "too far". This is the side of the square
+  // FURTHEST from the tag (the tag left on the opposite side), not the edge it walked through.
   if (Array.isArray(zone.violating) && zone.violating.length === 2) {
     const a = byId[zone.violating[0]], b = byId[zone.violating[1]];
-    if (a && b) s += `<line class="room-viol" x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}"/>`;
+    if (a && b) s += `<line class="room-viol" x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}"><title>${esc(a.name || a.id)} and ${esc(b.name || b.id)} both say the tag is too far (it is away from this side)</title></line>`;
   }
   // distance circle per online laptop
   for (const a of A) {
@@ -1159,7 +1162,7 @@ function roomRenderControls() {
   $("roomcalmsg").style.color = c.phase === "error" ? "var(--red)" : "";
   const sp = running && c.point ? c.point : roomPick;
   $("roomspot").textContent = running && c.point ? `Holding at x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m`
-    : roomPick ? `Spot: x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m (picked on the map)` : "Spot: centre of the online laptops";
+    : roomPick ? `Spot: x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m (picked on the map)` : "Spot: centre of the square";
   const res = Array.isArray(c.results) ? c.results : [];
   const html = res.length ? `<table><tr><th>Laptop</th><th>Median</th><th>Noise &sigma;</th><th>Packets</th><th>Distance</th><th>1 m level</th><th>Offset</th></tr>`
     + res.map(r => `<tr><td><b>${esc(r.id)}</b></td><td class="mono">${roomF(r.median)} dBm</td><td class="mono">${roomF(r.sigma_db)} dB</td>
@@ -1188,9 +1191,11 @@ function roomRenderControls() {
 }
 
 // ---------- laptops table
+let roomTablePress = false;   // a mouse/finger is down on the table: don't replace its buttons mid-click
 function roomRenderTable() {
   const box = $("roomtable"), fe = document.activeElement;
   if (fe && box.contains(fe) && (fe.tagName === "INPUT" || fe.tagName === "SELECT")) return;   // don't redraw under the user's typing
+  if (roomTablePress) return;
   const A = roomAnchors();
   $("roomnlap").textContent = R ? `(${A.length})` : "";
   let html;
@@ -1225,6 +1230,12 @@ function roomRenderTable() {
 }
 function roomSetupTable() {
   const box = $("roomtable");
+  // The numbers change every poll; without this, a button could be redrawn between
+  // mouse-down and mouse-up and the click would be lost.
+  box.addEventListener("pointerdown", () => { roomTablePress = true; });
+  const release = () => { if (roomTablePress) setTimeout(() => { roomTablePress = false; }, 0); };
+  document.addEventListener("pointerup", release);
+  document.addEventListener("pointercancel", release);
   box.addEventListener("change", (e) => {
     const t = e.target, d = t.dataset;
     if (d.roomRole) roomConfig({ anchors: { [d.roomRole]: { role: t.value } } });

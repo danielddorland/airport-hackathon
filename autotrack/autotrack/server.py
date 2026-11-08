@@ -111,11 +111,15 @@ async def start_real_ble():
     monitor = state["live"]
     room = state["room"]
 
+    # The room files this laptop's packets under the id it had at START-UP (--laptop alex),
+    # and keeps it even if someone changes the "This laptop" picker later - otherwise Alex's
+    # packets would suddenly count as Joseph's (= a false WRONG AIRCRAFT).
+    self_id = monitor.laptops.active
+
     def on_sighting(s):
-        # This laptop's own verified packets feed the single-laptop monitor AND the room
-        # (as the laptop chosen with --laptop / the "This laptop" picker).
+        # This laptop's own verified packets feed the single-laptop monitor AND the room.
         monitor.on_sighting(s)
-        room.ingest_sighting(s, monitor.laptops.active)
+        room.ingest_sighting(s, self_id)
 
     ble = RealBLE(LIVE_RECEIVER, keys, on_sighting=on_sighting,
                   log=lambda m: print(m, flush=True))
@@ -481,7 +485,7 @@ def room_config(body: dict):
 
 @app.post("/api/room/calibrate")
 def room_calibrate(body: dict | None = None):
-    """Start "Calibrate room": hold the tag still at (x, y) (default: middle of the online laptops)."""
+    """Start "Calibrate room": hold the tag still at (x, y) (default: centre of the whole square)."""
     body = body or {}
     try:
         x = None if body.get("x") is None else float(body["x"])

@@ -23,7 +23,9 @@ TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = mo
   * If we hear nothing at all for 6 s, the tag is LOST (also counts as too far).
   * When the Room demo (room.py) is on and 2+ laptops hear the tag, the room decides what the
     tag shows, so this monitor keeps measuring but stops sending its own commands
-    (`suppress` returns True) - two systems must not fight over the beep.
+    (`suppress` returns True) - two systems must not fight over the beep. When the room lets go
+    again, this monitor re-sends its own current mode once, so the tag never stays stuck in
+    whatever the room last told it (e.g. still beeping after the other laptops dropped off).
 """
 
 import asyncio
@@ -62,6 +64,7 @@ class LiveTagMonitor:
         self.history = []                 # (time, smoothed rssi) for the last 60 s
         self.last_seen = None
         self.alert_sent = None            # last mode we successfully sent
+        self._was_suppressed = False      # was the Room demo in charge at the last check?
         self.events = []                  # short log lines for the page
 
     # Called by real_ble.py for every verified advertisement from the tag.
@@ -124,6 +127,7 @@ class LiveTagMonitor:
 
     def _check(self):
         now = time.time()
+        self._resync_after_room()
         self.samples = [(t, r) for t, r in self.samples if now - t <= WINDOW_S]
         heard = [r for _, r in self.samples]
         # Packets we'd expect at the normal close-range rate but didn't hear count as very weak.
@@ -171,6 +175,15 @@ class LiveTagMonitor:
         elif want == "lost":
             self._note("Lost the tag (no signal for 6 s) - asking it to flash red if it can still hear us")
             self._send(MODE_ALERT)
+
+    def _resync_after_room(self):
+        """The room just handed the tag back to us: put the tag in the mode WE want right now."""
+        suppressed = bool(self.suppress is not None and self.suppress())
+        if self._was_suppressed and not suppressed and self.ble:
+            mode = MODE_ALERT if self.state in ("too_far", "lost") else MODE_NORMAL
+            self._note(f"Room demo no longer in charge of the tag - sending this laptop's own mode ({mode})")
+            self._send(mode)
+        self._was_suppressed = suppressed
 
     def _send(self, mode):
         if not self.ble:

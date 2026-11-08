@@ -177,9 +177,12 @@
           Measuring the same distance again replaces the old reading.</p>
         <div class="row">
           <label>ESP is <select id="ltcald">
-            <option value="0.3">0.3</option><option value="0.5">0.5</option><option value="1" selected>1</option>
+            <option value="0.05">0.05 (touching)</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="1" selected>1</option>
             <option value="2">2</option><option value="3">3</option><option value="4">4</option></select> m away</label>
           <button class="primary" id="ltcalbtn" onclick="measurePoint()">Measure (8 s)</button>
+          <span class="note">or type what you read:</span>
+          <input type="number" id="ltcalman" placeholder="-73" step="1" style="width:70px"> <span class="note">dBm</span>
+          <button class="small" onclick="addManualPoint()">Add reading</button>
           <button class="small" onclick="clearPoints()">Clear this laptop's measurements</button>
           <span class="note" id="ltcalmsg"></span>
         </div>
@@ -608,7 +611,7 @@ function renderLaptops(d) {
   btn.textContent = m ? `Measuring... ${Math.ceil(m.left_s)} s (${m.packets} packets) - keep still` : "Measure (8 s)";
   const rows = p.points.map((q, i) => `<tr><td>${q.d} m</td><td class="mono">${q.rssi.toFixed(1)} dBm</td>
       <td class="note">curve says ${q.fit_rssi.toFixed(1)} (${(q.rssi - q.fit_rssi >= 0 ? "+" : "") + (q.rssi - q.fit_rssi).toFixed(1)})</td>
-      <td class="note">${q.samples ? q.samples + " packets" : "from Alex's notes"}</td>
+      <td class="note">${q.samples ? q.samples + " packets" : "typed in"}</td>
       <td><button class="small" onclick="deletePoint(${i})">Remove</button></td></tr>`).join("");
   const html = p.points.length
     ? `<table><tr><th>Distance</th><th>Measured</th><th>Fit</th><th></th><th></th></tr>${rows}</table><div class="note">${esc(p.note)}</div>`
@@ -628,6 +631,14 @@ async function measurePoint() {
   const r = await post("/api/laptops/measure", { distance_m: d, seconds: 8 });
   $("ltcalmsg").textContent = r.ok ? `${d} m: ${r.rssi} dBm (${r.packets} packets, spread ${r.spread_db} dB)` : r.error || r.detail || "failed";
   $("ltcalmsg").style.color = r.ok ? "" : "var(--red)";
+}
+async function addManualPoint() {
+  const d = +$("ltcald").value, v = $("ltcalman").value.trim();
+  if (v === "" || isNaN(+v)) { $("ltcalman").focus(); return; }
+  const r = await post("/api/laptops/point/add", { distance_m: d, rssi: -Math.abs(+v) });
+  $("ltcalmsg").textContent = r.ok ? `${d} m: ${-Math.abs(+v)} dBm added` : r.detail || "failed";
+  $("ltcalmsg").style.color = r.ok ? "" : "var(--red)";
+  if (r.ok) $("ltcalman").value = "";
 }
 async function deletePoint(i) { await post("/api/laptops/point/delete", { index: i }); }
 async function clearPoints() {

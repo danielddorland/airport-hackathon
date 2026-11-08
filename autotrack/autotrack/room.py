@@ -4,8 +4,9 @@ room.py - the "Room demo": 3-4 laptops in a square find the one ESP32 tag togeth
 Every laptop hears the tag and reports the signal strength (RSSI) of each verified packet.
 The main laptop (the one running the server) combines them:
 
-  1. Every 0.5 s, take each laptop's packets from the last 0.5 s (the tag sends one every
-     100 ms, so about 5) and use their MEDIAN as that laptop's signal strength.
+  1. Every 0.5 s, take each laptop's LAST 5 PACKETS (the tag sends one every 100 ms, but Windows
+     passes on only ~3 per second, so that's roughly the last 1.5 s) and use their MEDIAN as that
+     laptop's signal strength. Packets older than 3 s don't count.
   2. Turn it into a distance with the standard log-distance formula
          d = 10 ** ((A - RSSI) / (10 * n))
      where A = the laptop's 1 m signal (its calibration, laptops.py) + a room offset
@@ -41,7 +42,7 @@ from .layout import ROOT
 ROOM_FILE = ROOT / "data" / "room.json"
 
 TICK_S = 0.5               # position update rate (the page also refreshes every 0.5 s)
-WINDOW_S = 0.5             # each laptop's RSSI = median of its packets in the last 0.5 s (~5 at 100 ms)
+MEDIAN_N = 5               # each laptop's RSSI = median of its last 5 packets (none older than ONLINE_S)
 ONLINE_S = 3.0              # a laptop is "online" if it heard the tag in the last 3 s
 KEEP_S = 10.0               # how much raw packet history we keep per laptop
 D_MIN, D_MAX = 0.05, 15.0   # distances are clamped to this range (metres)
@@ -159,7 +160,7 @@ def wls_solve(anchors, dists, weights, iters=15):
 
 class RssiKalman:
     """One-number Kalman filter for a laptop's RSSI (random walk: the true signal drifts slowly).
-    (Not used by the room any more - it now takes the median of each 0.5 s window - kept as a tool.)"""
+    (Not used by the room any more - it now takes the median of the last 5 packets - kept as a tool.)"""
 
     def __init__(self, q=RSSI_Q):
         self.q = q
@@ -336,8 +337,8 @@ class _Live:
         self.packets = deque()        # (t, rssi)
         self.touch = TouchDetector()
         self.last_t = None
-        self.median = None            # median RSSI of the newest 0.5 s window with packets (this laptop's signal)
-        self.remote = None            # newest datagram from a reporter (it sends its own 0.5 s median)
+        self.median = None            # median RSSI of the last MEDIAN_N packets (this laptop's signal)
+        self.remote = None            # newest datagram from a reporter (it sends its own last-5 median)
         self.last_seq = None          # sequence number of the last accepted datagram
         self.counts = deque()         # (t, packets) reported by datagrams
 
@@ -509,9 +510,10 @@ class Room:
 
     def ingest_filtered(self, laptop, rssi_filtered, variance, raw_median, packets, t_age_ms, seq, now=None,
                         raw=None):
-        """One UDP datagram from a reporter: rssi_filtered = the median of its last 0.5 s of packets
-        (null if it heard nothing in that window: we then keep its previous value while it's online).
-        raw = optional list of that window's individual RSSIs (used for calibration / touch levels).
+        """One UDP datagram from a reporter (every 0.5 s): rssi_filtered = the median of its last 5
+        packets (null if none in the last 3 s: we then keep its previous value while it's online).
+        raw = optional list of the individual RSSIs heard since its previous datagram (used for
+        calibration / touch levels).
 
         Keeps the newest value per laptop. Returns True if accepted, False if ignored
         (simulator on, or an old/duplicate datagram). Raises ValueError on bad input."""
@@ -631,13 +633,11 @@ class Room:
                 d["raw"] = statistics.median(recent1) if recent1 else None
                 d["online"] = lv.last_t is not None and now - lv.last_t <= ONLINE_S
                 if lv.remote is not None:
-                    rssi = lv.remote["rssi"]    # the reporter's own median of its last 0.5 s
+                    rssi = lv.remote["rssi"]    # the reporter's own median of its last 5 packets
                 else:
-                    # This laptop's packets from the last WINDOW_S (~5 at 100 ms): their median.
-                    # Nothing new in the window (a missed packet or two)? Keep the last median.
-                    win = [r for t, r in lv.packets if now - WINDOW_S < t <= now + 0.05]
-                    if win:
-                        lv.median = statistics.median(win)
+                    # This laptop's last MEDIAN_N packets (none older than ONLINE_S): their median.
+                    fresh = [r for t, r in lv.packets if now - ONLINE_S <= t <= now + 0.05]
+                    lv.median = statistics.median(fresh[-MEDIAN_N:]) if fresh else None
                     rssi = lv.median
                 if d["online"] and rssi is not None:
                     d["rssi"] = rssi

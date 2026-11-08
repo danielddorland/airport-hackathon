@@ -63,7 +63,7 @@ DEFAULT_ANCHORS = {
     "alex":   {"x": 0.0, "y": 0.0, "role": "correct", "label": "Loader 5 - AC 1234", "flight": "AC 1234", "order": 0},
     "joseph": {"x": 2.0, "y": 0.0, "role": "wrong", "label": "Loader 4 - AC 857", "flight": "AC 857", "order": 1},
     "daniel": {"x": 2.0, "y": 2.0, "role": "corner", "label": "Corner C", "flight": "", "order": 2},
-    "ocean":  {"x": 0.0, "y": 2.0, "role": "corner", "label": "Corner D", "flight": "", "order": 3},
+    "prem":   {"x": 0.0, "y": 2.0, "role": "corner", "label": "Corner D", "flight": "", "order": 3},
 }
 DEFAULT_BAG = {"tag": "TAG-0001", "flight": "AC 1234", "booking": "DSX42K", "plate": "AC123456"}
 DEFAULT_ZONE = {"range_m": 2.5, "hold_s": 2.0}

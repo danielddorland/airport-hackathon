@@ -17,10 +17,12 @@ What it does, in plain English:
   * Scans with the same Bluetooth code as the server (autotrack/real_ble.py), so
     only packets with a correct secret signature (HMAC) are counted.
   * Keeps every heard packet in a small buffer (signal strength + when it was heard).
-  * DEFAULT (UDP): runs its own Kalman filter (same as the main laptop) on the RSSI and sends
-    ONE small UDP datagram every 0.2 s (a heartbeat even when nothing was heard) to port 8765:
-        {"v":1,"laptop":"joseph","seq":7,"rssi_filtered":-61.3,"variance":2.1,"raw_median":-62,
-         "packets":2,"t_age_ms":85}
+  * DEFAULT (UDP): every 0.5 s takes the packets heard in that half second (the tag sends one
+    every 100 ms, so about 5) and sends their MEDIAN in ONE small UDP datagram to port 8765
+    (also when nothing was heard - a heartbeat):
+        {"v":1,"laptop":"joseph","seq":7,"rssi_filtered":-61,"variance":1.0,"raw_median":-61,
+         "packets":5,"t_age_ms":85,"raw":[-60,-61,-62,-61,-63]}
+    rssi_filtered = that median (null if nothing was heard in the window).
     The old behaviour below is kept with  --transport http.
   * HTTP: every 0.25 s sends the buffer to the main laptop:
         POST /api/room/sightings  {"laptop": "joseph", "packets": [{"age_ms": 120, "rssi": -63}, ...]}
@@ -54,7 +56,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from autotrack.laptops import PROFILES_FILE, slug  # noqa: E402
-from autotrack.room import ONLINE_S, SIGMA_DB_DEFAULT, RssiKalman  # noqa: E402
+from autotrack.room import WINDOW_S  # noqa: E402
 from autotrack.tagcrypto import load_keys  # noqa: E402
 
 DEFAULT_KEYS = os.path.join(ROOT, "data", "tag_keys.json")
@@ -63,7 +65,7 @@ MAX_AGE_S = 5.0        # older packets are useless for "where is the tag NOW"
 STATUS_EVERY_S = 2.0
 HTTP_TIMEOUT_S = 2.0
 UDP_PORT = 8765
-UDP_MIN_S, UDP_MAX_S = 0.1, 0.25    # allowed send interval for UDP
+UDP_MIN_S, UDP_MAX_S = 0.1, 1.0     # allowed send interval for UDP (default WINDOW_S = 0.5 s)
 
 
 def stamp():
@@ -89,23 +91,20 @@ class Reporter:
     """
 
     def __init__(self, server, laptop, interval=None, log=print, transport="udp",
-                 udp_port=UDP_PORT, clock=time.monotonic, sigma_db=SIGMA_DB_DEFAULT):
+                 udp_port=UDP_PORT, clock=time.monotonic):
         if transport not in ("udp", "http"):
             raise ValueError("transport must be udp or http")
         self.server = normalise_server(server)
         self.laptop = laptop
         self.transport = transport
         self.udp_port = int(udp_port)
-        self.clock = clock                     # one clock for packet times, the Kalman filter and datagrams
+        self.clock = clock                     # one clock for packet times and datagrams
         if transport == "udp":
-            interval = 0.2 if interval is None else interval
+            interval = WINDOW_S if interval is None else interval
             self.interval = max(UDP_MIN_S, min(UDP_MAX_S, float(interval)))
         else:
             self.interval = max(0.05, float(0.25 if interval is None else interval))
         self.log = log
-        # Same filter and parameters as the main laptop (room.RssiKalman, r = sigma^2).
-        self.kalman = RssiKalman()
-        self.r = float(sigma_db) ** 2
         self.seq = 0                           # datagram counter (UDP)
         self.dg_raw = []                       # raw RSSIs heard since the last datagram
         self.last_heard = None                 # clock() time of the last packet
@@ -128,10 +127,9 @@ class Reporter:
             self.buffer.clear()                # the UDP path doesn't use the packet buffer
         self.buffer.append((t, int(rssi)))
         self.window.append(int(rssi))
-        if self.transport == "udp":            # (the http fallback sends raw packets, no filter)
-            self.dg_raw.append(int(rssi))
+        if self.transport == "udp":            # (the http fallback sends every raw packet instead)
+            self.dg_raw.append(int(rssi))      # this window's readings
             self.last_heard = t if self.last_heard is None else max(self.last_heard, t)
-            self.kalman.update(t, float(rssi), self.r)
         while len(self.buffer) > MAX_BUFFER:
             self.buffer.popleft()
             self.dropped += 1
@@ -144,17 +142,16 @@ class Reporter:
     def build_datagram(self, now=None):
         """The next datagram as a dict (pure: no network). Always built, also when nothing was heard."""
         now = self.clock() if now is None else now
-        heard = self.last_heard is not None and now - self.last_heard <= ONLINE_S
-        k = self.kalman
-        fresh = heard and k.x is not None
-        raw = self.dg_raw
+        raw = self.dg_raw                      # everything heard in this window (~5 packets at 100 ms)
+        med = statistics.median(raw) if raw else None
         dg = {
             "v": 1, "laptop": self.laptop, "seq": self.seq,
-            "rssi_filtered": round(k.x, 2) if fresh else None,
-            "variance": round(k.p, 3) if fresh else None,
-            "raw_median": statistics.median(raw) if raw else None,
+            "rssi_filtered": med,              # the window's median = this laptop's signal strength
+            "variance": round(statistics.pvariance(raw), 3) if raw else None,
+            "raw_median": med,
             "packets": len(raw),
             "t_age_ms": None if self.last_heard is None else max(0, round((now - self.last_heard) * 1000)),
+            "raw": raw[-20:],                  # the individual readings (for calibration / touch levels)
         }
         self.seq += 1
         self.dg_raw = []
@@ -402,7 +399,8 @@ def main():
                    help="udp (default): send this laptop's own filtered signal; http: old fallback, raw packets")
     p.add_argument("--udp-port", type=int, default=UDP_PORT, help="UDP port on the main laptop (default 8765)")
     p.add_argument("--interval", type=float, default=None,
-                   help="seconds between sends (default 0.2 for udp, clamped to 0.1-0.25; 0.25 for http)")
+                   help="seconds between sends (default 0.5 for udp = one median of ~5 packets, "
+                        "clamped to 0.1-1.0; 0.25 for http)")
     p.add_argument("--keys", default=DEFAULT_KEYS, help="path to tag_keys.json")
     p.add_argument("--fake", action="store_true",
                    help="no Bluetooth: send made-up packets to test the network connection")

@@ -900,8 +900,9 @@ async function feedLoop() {
 // One ESP32 tag, several laptops at the corners of a square. Each laptop turns the tag's signal
 // strength into a rough distance; the server (autotrack/room.py) combines them into an approximate
 // position, decides the bag status and tells the tag to beep. This tab only draws GET /api/room
-// (every 300 ms while the tab is open) and sends button presses back to /api/room/...
-const ROOM_POLL_MS = 300;
+// (every 500 ms while the tab is open - the server also updates the position every 500 ms)
+// and sends button presses back to /api/room/...
+const ROOM_POLL_MS = 500;
 const ROOM_TITLE = document.title;
 const ROOM_ROLE_COL = { correct: "#1F9D55", wrong: "#E3141B", corner: "#2B2D32" };
 const ROOM_EV = { wrong: ["Wrong aircraft", "#E3141B"], checkin: ["Checked in", "#16803F"], zone_out: ["Out of zone", "#A50E13"],
@@ -928,7 +929,7 @@ const roomSnap = (v) => Math.round(v / 0.05) * 0.05;
 function roomClock(t) { const d = new Date(t * 1000); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, "0")).join(":"); }
 function roomSay(text, bad) { $("roommsg").textContent = text || ""; $("roommsg").style.color = bad ? "var(--red)" : ""; }
 
-// Ask the server every 300 ms, but only while the Room demo tab is open.
+// Ask the server every 500 ms, but only while the Room demo tab is open.
 async function roomLoop() {
   if (document.querySelector("#tab-room.on")) {
     try { R = await get("/api/room"); roomErr = null; }

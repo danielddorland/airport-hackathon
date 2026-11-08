@@ -683,43 +683,62 @@ def test_reporter_datagram_fields_and_heartbeat():
     import json
     clock = Clock(100.0)
     rep = _reporter(clock=clock)
-    assert rep.udp_host == "192.168.1.23" and rep.interval == 0.2
+    assert rep.udp_host == "192.168.1.23" and rep.interval == 0.5          # one median every 0.5 s
     dg = rep.build_datagram()
     assert dg["seq"] == 0 and dg["packets"] == 0 and dg["rssi_filtered"] is None
-    assert dg["raw_median"] is None and dg["t_age_ms"] is None                       # never heard
-    for r in (-60, -62, -64):
+    assert dg["raw_median"] is None and dg["t_age_ms"] is None and dg["raw"] == []   # never heard
+    for r in (-60, -70, -62, -64, -61):                    # 5 packets, 100 ms apart = one 0.5 s window
         rep.add(r)
-        clock.t += 0.05
-    clock.t += 0.05
+        clock.t += 0.1
     dg = rep.build_datagram()
-    assert dg["seq"] == 1 and dg["packets"] == 3 and dg["raw_median"] == -62 and dg["v"] == 1
-    assert dg["t_age_ms"] == 100 and dg["laptop"] == "joseph"
-    assert -64 <= dg["rssi_filtered"] <= -60 and dg["variance"] > 0
+    assert dg["seq"] == 1 and dg["packets"] == 5 and dg["v"] == 1 and dg["laptop"] == "joseph"
+    assert dg["rssi_filtered"] == -62 and dg["raw_median"] == -62           # the median of the 5
+    assert dg["raw"] == [-60, -70, -62, -64, -61] and dg["variance"] > 0 and dg["t_age_ms"] == 100
     assert len(json.dumps(dg)) < 512
-    clock.t += 0.2
-    dg = rep.build_datagram()                              # heartbeat, nothing new
-    assert dg["seq"] == 2 and dg["packets"] == 0 and dg["raw_median"] is None
-    assert dg["rssi_filtered"] is not None and dg["t_age_ms"] == 300
-    clock.t += 3.5
-    dg = rep.build_datagram()                              # unheard for > 3 s
-    assert dg["rssi_filtered"] is None and dg["variance"] is None and dg["t_age_ms"] >= 3500
+    clock.t += 0.5
+    dg = rep.build_datagram()                              # heartbeat: nothing heard in this window
+    assert dg["seq"] == 2 and dg["packets"] == 0 and dg["rssi_filtered"] is None and dg["t_age_ms"] == 600
     # interval clamp for udp, none for http
-    assert _reporter(interval=0.01).interval == 0.1 and _reporter(interval=5).interval == 0.25
+    assert _reporter(interval=0.01).interval == 0.1 and _reporter(interval=5).interval == 1.0
     assert _reporter(transport="http").interval == 0.25
 
 
-def test_reporter_kalman_reduces_noise():
+def test_reporter_median_of_5_reduces_noise():
     clock = Clock(0.0)
     rep = _reporter(clock=clock)
     rng = random.Random(7)
-    raw, filt = [], []
-    for _ in range(200):
+    raw, med = [], []
+    for i in range(400):                                   # 40 s at one packet per 100 ms
         z = round(-65 + rng.gauss(0, 4))
         rep.add(z)
-        clock.t += 0.125
         raw.append(z)
-        filt.append(rep.kalman.x)
-    assert statistics.pvariance(filt[20:]) < statistics.pvariance(raw[20:]) * 0.5
+        clock.t += 0.1
+        if i % 5 == 4:                                     # every 0.5 s
+            med.append(rep.build_datagram()["rssi_filtered"])
+    assert len(med) == 80
+    assert statistics.pvariance(med) < statistics.pvariance(raw) * 0.5, (statistics.pvariance(med), statistics.pvariance(raw))
+
+
+def test_room_uses_median_of_last_half_second():
+    room, clock = new_room("median")
+    # 5 packets in the last 0.5 s: -60 -60 -90 -60 -61 -> median -60 (the -90 outlier is ignored)
+    for k, r in enumerate((-60, -60, -90, -60, -61)):
+        room.ingest("joseph", r, clock.t - 0.45 + 0.1 * k)
+    room.ingest("joseph", -30, clock.t - 0.8)            # older than 0.5 s: not used
+    room.tick()
+    a = _anchor(room, "joseph")
+    assert a["online"] and a["rssi"] == -60.0, a
+    # a 0.5 s window with no packets keeps the last median while the laptop is online
+    clock.t += 0.5
+    room.tick()
+    assert _anchor(room, "joseph")["rssi"] == -60.0
+    # a reporter datagram with a median, then an empty window: the room holds the last median
+    room.ingest_filtered("daniel", -70, 1.0, -70, 5, 50, 0, raw=[-69, -70, -70, -71, -72])
+    room.ingest_filtered("daniel", None, None, None, 0, 550, 1)
+    room.tick()
+    d = _anchor(room, "daniel")
+    assert d["online"] and d["rssi"] == -70.0 and len(room.live["daniel"].packets) == 5, d
+    assert room_mod.TICK_S == 0.5 and room_mod.WINDOW_S == 0.5
 
 
 def test_reporter_sends_udp_to_local_receiver():

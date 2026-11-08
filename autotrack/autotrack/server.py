@@ -15,6 +15,7 @@ server.py - the web server (FastAPI). Everything runs on this laptop; no interne
   GET  /api/laptops                 every laptop's calibration + which one THIS computer is
   POST /api/laptops/select          {"id": "daniel"} - switch this computer's profile (creates it if new)
   POST /api/laptops/measure         {"distance_m": 1.0} - measure the tag for 5 s at a known distance
+  POST /api/laptops/point/add       {"distance_m": 1, "rssi": -73} - a reading typed in by hand
   POST /api/laptops/point/delete    {"index": 0} - drop one measurement
   POST /api/laptops/clear           drop all measurements of this laptop
   POST /api/laptops/threshold       {"meters": 1.9} - "too far" limit in metres
@@ -357,6 +358,21 @@ async def laptops_measure(body: dict):
                f"-> {p['name']}: 1 m = {p['rssi_1m']:.1f} dBm, n = {p['n']:.2f}")
     return {"ok": True, "rssi": round(med, 1), "packets": len(got), "spread_db": round(spread, 1),
             **live.laptops.to_json()}
+
+
+@app.post("/api/laptops/point/add")
+def laptops_point_add(body: dict):
+    """A reading typed in by hand (e.g. watched on the signal graph): {"distance_m": 1, "rssi": -73}."""
+    try:
+        d, rssi = float(body.get("distance_m")), float(body.get("rssi"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "distance_m and rssi must be numbers")
+    if not (0.05 <= d <= 20 and -110 <= rssi <= 0):
+        raise HTTPException(400, "distance 0.05-20 m, rssi -110..0 dBm")
+    live = state["live"]
+    p = live.laptops.add_point(d, rssi, None)
+    live._note(f"Calibration (typed in): {rssi:.1f} dBm at {d:g} m -> {p['name']}: 1 m = {p['rssi_1m']:.1f} dBm, n = {p['n']:.2f}")
+    return {"ok": True, **live.laptops.to_json()}
 
 
 @app.post("/api/laptops/point/delete")

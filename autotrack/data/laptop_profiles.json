@@ -30,12 +30,31 @@
     },
     "daniel": {
       "name": "Daniel",
-      "rssi_1m": -60.0,
-      "n": 1.8,
+      "rssi_1m": -75.8,
+      "n": 3.24,
       "threshold_m": 1.9,
-      "calibrated": false,
-      "points": [],
-      "note": "Not calibrated yet - using Alex's numbers."
+      "calibrated": true,
+      "points": [
+        {
+          "d": 0.3,
+          "rssi": -60.0,
+          "samples": null,
+          "t": 1794096680
+        },
+        {
+          "d": 1.0,
+          "rssi": -73.5,
+          "samples": null,
+          "t": 1794096680
+        },
+        {
+          "d": 3.0,
+          "rssi": -92.5,
+          "samples": null,
+          "t": 1794096680
+        }
+      ],
+      "note": "Fitted from 3 measurement(s)."
     }
   }
 }

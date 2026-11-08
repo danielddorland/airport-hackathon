@@ -338,6 +338,10 @@ class Simulation:
                 s["ok_makeup"] += rec.zone == truth
 
     # ------------------------------------------------------------------ snapshot for the web page
+    def _nearest_zone(self, x, y):
+        xy = self.layout.xy_m
+        return min(xy, key=lambda n: (xy[n][0] - x) ** 2 + (xy[n][1] - y) ** 2)
+
     def _belt_of(self, bag_id):
         p = self.phys.get(bag_id)
         if not p:
@@ -366,7 +370,7 @@ class Simulation:
             "alerts": sorted([a for a in tr.alerts.values() if a["active"]], key=lambda a: (PRIO.get(a["status"], 9), -a["t"])),
             "recent_alerts": sorted(tr.alerts.values(), key=lambda a: -a["t"])[:30],
             "loaders": tr.loaders, "flights": FLIGHTS, "occupancy": occupancy, "jams": jams,
-            "fallen_tags": [{"tag": s, "x": x, "y": y} for s, (x, y) in self.fallen_tags.items()],
+            "fallen_tags": [{"tag": s, "x": x, "y": y, "zone": self._nearest_zone(x, y)} for s, (x, y) in self.fallen_tags.items()],
             "tags": {"in_use": in_use, "in_return_bins": len(tr.tags_in_bins), "returned_total": tr.tags_returned,
                      "charging": len(self.recharging), "available": len(self.pool)},
             "live": ({"id": self.live["id"], "tag": LIVE_TAG, "rssi": None if self.live_rssi is None else round(self.live_rssi),

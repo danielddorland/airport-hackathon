@@ -362,25 +362,35 @@ details summary::marker { color: var(--red); }
 }
 #map text { font-family: var(--body); }
 
-/* belts: a dark outline under a gray column */
+/* conveyor belts: a dark frame, a gray belt, and rollers that move in the belt's direction.
+   Belts only run horizontally/vertically (right-angle bends), each in its own lane. */
 .belt-edge {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 16;
-  stroke-linecap: butt;
+  stroke-width: 12;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 .belt {
   fill: none;
   stroke: var(--steel);
-  stroke-width: 11;
-  stroke-linecap: butt;
+  stroke-width: 8;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
-.belt.jam {
-  stroke: var(--red);
-  stroke-dasharray: 10 6;
-  animation: march .6s linear infinite;
+.belt-rollers {
+  fill: none;
+  stroke: var(--graphite-2);
+  stroke-width: 8;
+  stroke-dasharray: 2 6;
+  stroke-linejoin: miter;
+  pointer-events: none;
+  animation: roll .7s linear infinite;   /* rollers travel the way the belt runs */
 }
-@keyframes march { to { stroke-dashoffset: -16; } }
+@keyframes roll { to { stroke-dashoffset: -8; } }
+#map.paused .belt-rollers { animation-play-state: paused; }
+.belt.jam { stroke: var(--red); }
+.belt-rollers.jam { stroke: var(--red-dark); animation: none; }   /* jammed: belt stopped */
 .belt-chevron { fill: var(--ink); pointer-events: none; }
 
 /* checkpoints: flat squares with a hard ink shadow rect behind them */
@@ -799,6 +809,6 @@ tr.click:hover { background: var(--red-tint); }
 /* respect reduced motion: keep the state visible, drop the movement */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
-  .belt.jam, .light.red, .light.amber, #lttag.flash .lt-body { animation: none; }
+  .belt-rollers, .light.red, .light.amber, #lttag.flash .lt-body { animation: none; }
   .flash { animation: none; background: var(--red-tint); }
 }

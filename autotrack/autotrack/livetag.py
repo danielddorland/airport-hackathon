@@ -39,6 +39,7 @@ CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we raise an a
 CLEAR_CHECKS = 6            # checks in a row before we clear one (3 s): quick to alert, slow to clear
 LOST_AFTER_S = 6.0
 MISSING_DBM = -100.0        # value given to each packet we expected but didn't hear
+MISSING_BELOW = 0.25        # ...but only when we hear less than 25% of the normal close-range rate
 NEAR_MARGIN_DB = 10         # "close" (for learning the normal packet rate) = this much above the threshold
 RATE_LEARN = 0.1            # how fast the normal packet rate adapts
 
@@ -129,7 +130,11 @@ class LiveTagMonitor:
         heard = [r for _, r in self.samples]
         # Packets we'd expect at the normal close-range rate but didn't hear count as very weak.
         expected = int(round(self.near_rate * WINDOW_S)) if self.near_rate else 0
-        self.missing = max(0, expected - len(heard)) if self.last_seen is not None else 0
+        # Windows delivers packets in bursts: with the tag right next to the laptop a 5 s window can hold
+        # ~30% of the usual count. So missing packets only count when we hear under MISSING_BELOW of
+        # the normal rate (far away, most packets are lost for good).
+        short = self.last_seen is not None and len(heard) < MISSING_BELOW * expected
+        self.missing = max(0, expected - len(heard)) if short else 0
         if now < self._quiet_until:
             # Sending a command connects to the tag, which pauses its broadcasts for a moment.
             # Counting those gaps as "far" would trigger another command: an endless loop.

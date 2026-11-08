@@ -14,7 +14,8 @@ The main laptop (the one running the server) combines them:
   4. Smooth the position with a second Kalman filter (it also gives a speed).
   5. Story rules: touching the WRONG loader's laptop -> WRONG AIRCRAFT (tag beeps + flashes red);
      touching the CORRECT loader's laptop -> CHECKED IN (green + chirp). If two NEIGHBOURING
-     laptops both think the tag is further than the zone range -> OUT OF ZONE.
+     laptops (next to each other on the map) both think the tag is further than the zone range
+     -> OUT OF ZONE. Never while the tag is touching a laptop (it is at that laptop, so inside).
 
 Bluetooth signal strength is rough (bodies, hands and walls change it by 5-10 dB), so the
 location is APPROXIMATE - good to about a metre, not centimetres (that would need UWB).
@@ -49,6 +50,7 @@ POS_RESET_S = 5.0           # forget the position after 5 s without a fix
 TOUCH_M = 0.12              # default "touching" distance
 TOUCH_ON_TICKS, TOUCH_OFF_TICKS, TOUCH_OFF_DB = 2, 3, 4.0
 ZONE_CLEAR_S = 3.0          # OUT OF ZONE clears after 3 s with no violating pair
+ZONE_NEAR_M = 0.6           # a laptop hears the tag closer than this = it's at that laptop, so inside
 OK_MODE_S = 3.0             # how long we "want" mode 2 (OK) after a check-in
 RETRY_S = 5.0               # resend a tag command that failed after this long
 TRAIL_LEN = 40
@@ -290,6 +292,17 @@ def zone_pairs(ordered_ids):
     return [(ordered_ids[i], ordered_ids[(i + 1) % n]) for i in range(n)]
 
 
+def square_order(points):
+    """Laptop ids in order AROUND the square (by angle from the centre), so 'neighbours' are the
+    laptops that really sit next to each other on the map - whatever order they joined in.
+    points: {id: (x, y)}."""
+    if not points:
+        return []
+    cx = sum(p[0] for p in points.values()) / len(points)
+    cy = sum(p[1] for p in points.values()) / len(points)
+    return sorted(points, key=lambda k: (math.atan2(points[k][1] - cy, points[k][0] - cx), k))
+
+
 def violating_pairs(pairs, dist, online, range_m):
     """Neighbour pairs where BOTH laptops are online and BOTH see the tag further than range_m."""
     out = []
@@ -405,6 +418,10 @@ class Room:
 
     def _ordered(self):
         return sorted(self.anchors, key=lambda k: (self.anchors[k]["order"], k))
+
+    def _around(self):
+        """Laptops in order around the square (for the zone rule and the drawn square)."""
+        return square_order({k: (a["x"], a["y"]) for k, a in self.anchors.items()})
 
     def _reset_runtime(self):
         """Clears bag latches, filters and alarms (keeps settings and calibration)."""
@@ -581,8 +598,16 @@ class Room:
         self._derived = derived
 
         # ---- zone: two NEIGHBOURING laptops both too far
+        # While the tag is touching a laptop it is, by definition, at that laptop - inside the square -
+        # so noisy "too far" readings from the other side can't raise OUT OF ZONE.
+        # Same if any laptop hears it very close (strong signal = the most trustworthy reading we have):
+        # the tag is next to a laptop, so inside.
         dist = {k: v["distance_m"] for k, v in derived.items()}
-        bad = violating_pairs(zone_pairs(self._ordered()), dist, online, self.zone["range_m"])
+        touching = any(lv.touch.touching for k, lv in self.live.items() if k in self.anchors)
+        near = any(v["online"] and v["distance_m"] is not None and v["distance_m"] < ZONE_NEAR_M
+                   for v in derived.values())
+        bad = [] if (touching or near) else violating_pairs(zone_pairs(self._around()), dist, online,
+                                                            self.zone["range_m"])
         for pair in list(self._viol_since):
             if pair not in bad:
                 del self._viol_since[pair]
@@ -935,7 +960,7 @@ class Room:
                 })
             pos = self.pos_kf.position()
             vel = self.pos_kf.velocity()
-            ordered = self._ordered()
+            ordered = self._around()
             n_online = sum(1 for x in out if x["online"])
             return {
                 "enabled": self.enabled, "now": now, "real": self.ble is not None, "sim": self.sim,

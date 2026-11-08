@@ -207,7 +207,7 @@ def test_calibration_offset_math():
 
 def test_room_defaults_and_trilateration():
     room, clock = new_room()
-    assert set(room.anchors) == {"alex", "joseph", "daniel", "ocean"}
+    assert set(room.anchors) == {"alex", "joseph", "daniel", "prem"}
     assert room.anchors["joseph"]["role"] == "wrong" and room.anchors["alex"]["role"] == "correct"
     run(room, clock, 4, at_point(room, 0.6, 1.4))
     st = room.state()
@@ -261,14 +261,14 @@ def test_zone_needs_two_adjacent_laptops_and_hold_time():
     far["alex"], far["daniel"] = rssi_at(room, "alex", 3.5), rssi_at(room, "daniel", 3.5)
     run(room, clock, 5, far)
     assert room.status == "ON TRACK", room.status
-    # alex (0,0) and ocean (0,2) are neighbours: both far -> OUT OF ZONE, but only after hold_s (2 s)
+    # alex (0,0) and prem (0,2) are neighbours: both far -> OUT OF ZONE, but only after hold_s (2 s)
     far = dict(at_point(room, 1, 1))
-    far["alex"], far["ocean"] = rssi_at(room, "alex", 3.5), rssi_at(room, "ocean", 3.5)
+    far["alex"], far["prem"] = rssi_at(room, "alex", 3.5), rssi_at(room, "prem", 3.5)
     first_bad = went_out = None
     for _ in range(50):
         run(room, clock, 0.2, far)
         d = {a["id"]: a["distance_m"] for a in room.state()["anchors"]}
-        if first_bad is None and d["alex"] > 2.5 and d["ocean"] > 2.5:
+        if first_bad is None and d["alex"] > 2.5 and d["prem"] > 2.5:
             first_bad = clock.t
         if room.status == "OUT OF ZONE":
             went_out = clock.t
@@ -277,7 +277,7 @@ def test_zone_needs_two_adjacent_laptops_and_hold_time():
     assert 2.0 - 0.01 <= went_out - first_bad <= 2.0 + 0.41, went_out - first_bad      # waited the hold time
     st = room.state()
     assert st["bag"]["status"] == "OUT OF ZONE" and st["alert"] and st["tag_mode"] == 1
-    assert sorted(st["zone"]["violating"]) == ["alex", "ocean"] and st["zone"]["inside"] is False
+    assert sorted(st["zone"]["violating"]) == ["alex", "prem"] and st["zone"]["inside"] is False
     assert st["events"][0]["kind"] == "zone_out"
     # back inside: clears only after 3 s without a violating pair
     run(room, clock, 2.0, at_point(room, 1, 1))
@@ -288,7 +288,7 @@ def test_zone_needs_two_adjacent_laptops_and_hold_time():
 
 def test_room_calibration_recovers_offset():
     room, clock = new_room()
-    true_offset = {"alex": 0.0, "joseph": 5.0, "daniel": -4.0, "ocean": 2.0}
+    true_offset = {"alex": 0.0, "joseph": 5.0, "daniel": -4.0, "prem": 2.0}
     p = (1.0, 1.0)
 
     def heard(t):
@@ -584,11 +584,11 @@ def test_ingest_filtered_order_restart_sim_and_age():
     assert room.live["joseph"].remote["rssi"] == -71
     assert room.ingest_filtered("joseph", -72, 2, -72, 1, 0, 0)            # seq 0 = restart too
     # t_age_ms shifts the heard time (and so the online window)
-    room.ingest_filtered("ocean", -60, 2, -60, 1, 2900, 1)
-    assert abs(room.live["ocean"].last_t - (clock.t - 2.9)) < 1e-6
+    room.ingest_filtered("prem", -60, 2, -60, 1, 2900, 1)
+    assert abs(room.live["prem"].last_t - (clock.t - 2.9)) < 1e-6
     clock.t += 0.5
     room.tick()
-    assert not _anchor(room, "ocean")["online"]                            # heard 3.4 s ago
+    assert not _anchor(room, "prem")["online"]                            # heard 3.4 s ago
     # heartbeat with "never heard" keeps a new laptop offline
     room.ingest_filtered("sam", None, None, None, 0, None, 0)
     assert room.live["sam"].last_t is None

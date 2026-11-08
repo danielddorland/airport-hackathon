@@ -63,7 +63,7 @@ Who stands where: `docs/HARDWARE.md` section 7. How it works: `docs/PRESENTING.m
    ```powershell
    .venv\Scripts\python tools\reporter.py --server http://192.168.1.23:8000 --laptop joseph
    ```
-   Use your own name (`joseph`, `daniel`, `ocean`). It prints a line every 2 s,
+   Use your own name (`joseph`, `daniel`, `prem`). It prints a line every 2 s,
    e.g. `heard 23 packets, median -61 dBm, server ok`. To test only the network (no tag, no bleak), add `--fake`
    and stop it again before the real demo.
 5. On the main laptop open the **Room demo** page, hold the tag still at the **centre** of the square

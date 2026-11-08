@@ -253,7 +253,7 @@ where the tag is in the square and which laptop it is touching.
 ### Layout (top view, 2 m square)
 
 ```
-   Ocean (0,2) ---------------- Daniel (2,2)
+   Prem (0,2) ----------------- Daniel (2,2)
    "Corner D"                   "Corner C"
        |                             |
        |          tag starts         |
@@ -270,14 +270,14 @@ where the tag is in the square and which laptop it is touching.
 | **Alex** | (0, 0) | correct checkpoint: Loader 5, serves AC 1234 | `run.py --mode real --laptop alex --host 0.0.0.0` (server + Bluetooth) |
 | **Joseph** | (2, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
 | **Daniel** | (2, 2) | corner (helps locate the tag) | `tools\reporter.py ... --laptop daniel` |
-| **Ocean** | (0, 2) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop ocean` |
+| **Prem** | (0, 2) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop prem` |
 
 The bag is booked on **AC 1234**. Touching it to Joseph's laptop = WRONG AIRCRAFT
 (tag flashes red and beeps). Moving it to Alex's laptop = CHECKED IN (beeping stops,
 green blink). Carrying it out of the square = OUT OF ZONE (beeps until it's back).
 
 Positions and roles can be changed on the Room demo page; they are saved in `data/room.json`.
-With only 3 laptops leave Ocean out: the triangle Alex - Joseph - Daniel still works.
+With only 3 laptops leave Prem out: the triangle Alex - Joseph - Daniel still works.
 
 ### Physical setup checklist
 

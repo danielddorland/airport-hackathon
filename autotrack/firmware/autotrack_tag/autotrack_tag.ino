@@ -3,7 +3,7 @@
  * ====================================================
  *
  * WHAT IT DOES
- *   1. Broadcasts a Bluetooth advertisement every ~100 ms so the laptop can
+ *   1. Broadcasts a Bluetooth advertisement every 100 ms so the laptop can
  *      measure how strong the signal is (RSSI). The advertisement contains a
  *      COUNTER that goes up once per second and an 8-byte signature (HMAC) made
  *      with this tag's secret KEY. The tag's serial number ("TAG-0001") is never
@@ -435,8 +435,8 @@ void setup() {
   BLEAdvertisementData scanResp;      // answer to "active" scans: just the name
   scanResp.setName(DEVICE_NAME);
   advertising->setScanResponseData(scanResp);
-  advertising->setMinInterval(0x90);  // 0x90 * 0.625 ms = 90 ms
-  advertising->setMaxInterval(0xB0);  // 0xB0 * 0.625 ms = 110 ms  (about 10 per second)
+  advertising->setMinInterval(0xA0);  // 0xA0 * 0.625 ms = 100 ms
+  advertising->setMaxInterval(0xA0);  // 0xA0 * 0.625 ms = 100 ms  (every 100 ms exactly)
 
   lastAdvCounter = currentCounter();
   updateAdvertisement(lastAdvCounter);

@@ -5,7 +5,11 @@ The laptop is the checkpoint. Its Bluetooth hears the ESP32 several times a seco
 reports the signal strength (RSSI). The tag transmits at -12 dBm (see the sketch's
 TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = more than ~2 m.
 
-  * We smooth the RSSI (median of the last 3 seconds), because single readings jump around.
+  * We smooth the RSSI (median of the last 5 seconds), because single readings jump around.
+    Far away, the laptop only catches the few packets that happen to arrive strong, which makes
+    the tag look closer than it is. So we remember how many packets per second we normally hear
+    when the tag is close, and count every packet we're now missing as a very weak one (-100 dBm):
+    silence pulls the estimate towards "far" instead of being ignored.
   * We turn it into a ROUGH distance for the map, using THIS laptop's calibration curve
     (laptops.py). Laptops hear the tag 5-10 dB differently, so each one is calibrated on its
     own; Alex's curve (Nov 7, tag at -12 dBm: touching -39, 30 cm -50, 1 m -60, 3 m -68 dBm)
@@ -14,8 +18,8 @@ TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = mo
   * The "too far" limit is set in metres (default 1.9 m = -65 dBm on Alex's laptop) and turned
     into dBm with this laptop's curve. If the smoothed signal is weaker than that for 2 checks in a
     row (1 s), the tag is TOO FAR: we tell the ESP32 to flash red (+ beep if it has a buzzer).
-    It goes back to normal once the signal is 3 dB stronger than the threshold again
-    (that gap stops it flickering on and off right at the edge).
+    Quick to alert, slow to clear: it only goes back to normal once the signal has been at least
+    6 dB stronger than the threshold for 3 s in a row, so one lucky strong packet can't clear it.
   * If we hear nothing at all for 6 s, the tag is LOST (also counts as too far).
 """
 
@@ -26,10 +30,14 @@ import time
 from .laptops import Laptops, m_to_rssi, rssi_to_m as _rssi_to_m
 
 TAG = "TAG-0001"
-RETURN_MARGIN_DB = 3        # must come back this much stronger than the threshold to stop alerting
-WINDOW_S = 3.0              # smoothing window
-CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we change state
+RETURN_MARGIN_DB = 6        # must come back this much stronger than the threshold to stop alerting
+WINDOW_S = 5.0              # smoothing window
+CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we raise an alert (1 s)
+CLEAR_CHECKS = 6            # checks in a row before we clear one (3 s): quick to alert, slow to clear
 LOST_AFTER_S = 6.0
+MISSING_DBM = -100.0        # value given to each packet we expected but didn't hear
+NEAR_MARGIN_DB = 10         # "close" (for learning the normal packet rate) = this much above the threshold
+RATE_LEARN = 0.1            # how fast the normal packet rate adapts
 
 MODE_NORMAL, MODE_ALERT, MODE_LOCATE = 0, 1, 3
 
@@ -45,6 +53,8 @@ class LiveTagMonitor:
         self.state = "no_tag"             # no_tag | ok | too_far | lost
         self.pending_state, self.pending_count = None, 0
         self.smoothed = None
+        self.near_rate = None             # packets/s we normally hear when the tag is close
+        self.missing = 0                  # packets missing from the current window (counted as weak)
         self.history = []                 # (time, smoothed rssi) for the last 60 s
         self.last_seen = None
         self.alert_sent = None            # last mode we successfully sent
@@ -111,9 +121,19 @@ class LiveTagMonitor:
     def _check(self):
         now = time.time()
         self.samples = [(t, r) for t, r in self.samples if now - t <= WINDOW_S]
-        if self.samples:
-            self.smoothed = statistics.median(r for _, r in self.samples)
+        heard = [r for _, r in self.samples]
+        # Packets we'd expect at the normal close-range rate but didn't hear count as very weak.
+        expected = int(round(self.near_rate * WINDOW_S)) if self.near_rate else 0
+        self.missing = max(0, expected - len(heard)) if self.last_seen is not None else 0
+        if heard or self.missing:
+            self.smoothed = statistics.median(heard + [MISSING_DBM] * self.missing)
             self.history.append((now, self.smoothed))
+            # Learn the normal rate only from clearly-close windows (and only once the window is full).
+            raw_median = statistics.median(heard) if heard else None
+            if (raw_median is not None and raw_median >= self.threshold + NEAR_MARGIN_DB
+                    and self.last_seen is not None and now - self.samples[0][0] >= WINDOW_S * 0.8):
+                rate = len(heard) / WINDOW_S
+                self.near_rate = rate if self.near_rate is None else self.near_rate + RATE_LEARN * (rate - self.near_rate)
         self.history = [(t, r) for t, r in self.history if now - t <= 60]
 
         # What does the signal say right now?
@@ -133,7 +153,8 @@ class LiveTagMonitor:
             self.pending_count += 1
         else:
             self.pending_state, self.pending_count = want, 1
-        if self.pending_count < CONFIRM_CHECKS and want != "no_tag":
+        needed = CLEAR_CHECKS if (want == "ok" and self.state in ("too_far", "lost")) else CONFIRM_CHECKS
+        if self.pending_count < needed and want != "no_tag":
             return
         old, self.state = self.state, want
         self.pending_state, self.pending_count = None, 0
@@ -182,7 +203,11 @@ class LiveTagMonitor:
             "threshold_dbm": round(self.threshold, 1),
             "threshold_m": p["threshold_m"],
             "seen_ago_s": None if self.last_seen is None else round(now - self.last_seen, 1),
-            "packets_3s": len(self.samples),
+            "packets_3s": len(self.samples),   # (name kept for the page; the window is now WINDOW_S)
+            "packets_window": len(self.samples),
+            "window_s": WINDOW_S,
+            "missing": self.missing,
+            "near_rate": None if self.near_rate is None else round(self.near_rate, 2),
             "history": [[round(t - now, 1), round(r, 1)] for t, r in self.history],
             "events": [{"ago_s": round(now - e["t"]), "text": e["text"]} for e in self.events][::-1],
             "last_write": st.get("last_write"),

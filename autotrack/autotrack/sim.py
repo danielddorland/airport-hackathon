@@ -338,6 +338,14 @@ class Simulation:
                 s["ok_makeup"] += rec.zone == truth
 
     # ------------------------------------------------------------------ snapshot for the web page
+    def _belt_of(self, bag_id):
+        p = self.phys.get(bag_id)
+        if not p:
+            return None
+        if p["state"] in ("makeup", "held", "cleared", "loaded", "pulled"):
+            return [p["truth"].dest, p["truth"].dest, 0.0]
+        return p["truth"].belt(self.t)
+
     def snapshot(self):
         tr = self.tracker
         active = tr.active()
@@ -352,7 +360,9 @@ class Simulation:
             "t": self.t, "clock": clock(self.t), "total": self.world.total_ticks,
             "phase": next((ph["name"] for ph in PHASES if ph["start_tick"] <= self.t <= ph["end_tick"]), "hour finished"),
             "counts": tr.counts(), "active": len(active),
-            "bags": [b.to_json(brief=True) for b in bags[:400]],
+            # "belt" = where the bag physically is in the simulation (for drawing it on the belts);
+            # "zone"/"nearby" = where AutoTrack THINKS it is (from the noisy BLE signals).
+            "bags": [{**b.to_json(brief=True), "belt": self._belt_of(b.id)} for b in bags[:400]],
             "alerts": sorted([a for a in tr.alerts.values() if a["active"]], key=lambda a: (PRIO.get(a["status"], 9), -a["t"])),
             "recent_alerts": sorted(tr.alerts.values(), key=lambda a: -a["t"])[:30],
             "loaders": tr.loaders, "flights": FLIGHTS, "occupancy": occupancy, "jams": jams,

@@ -6,120 +6,12 @@
 <title>AutoTrack</title>
 <!-- One page, no internet needed: plain HTML + CSS + JavaScript. It asks the local server
      (server.py) for the latest state twice a second and draws it. -->
-<style>
-  :root {
-    --bg: #E6E9EF; --bg2: #DFE3EA; --card: #E9ECF2; --ink: #1d2230; --muted: #5d6475; --line: #c9ceda;
-    --red: #ED1C24; --amber: #E8890C; --green: #1F9D55; --blue: #2563EB; --purple: #7C3AED; --grey: #8a90a0;
-    --shadow: 6px 6px 14px #c5c9d2, -6px -6px 14px #ffffff;
-    --inset: inset 3px 3px 7px #c5c9d2, inset -3px -3px 7px #ffffff;
-    --mono: "JetBrains Mono", Consolas, "Cascadia Mono", monospace;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 14px/1.4 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; }
-  h1, h2, h3 { font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif; margin: 0; }
-  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 7px 12px;
-           background: var(--card); box-shadow: var(--shadow); color: var(--ink); }
-  button:active { box-shadow: var(--inset); }
-  button.primary { background: var(--red); color: #fff; box-shadow: 4px 4px 10px #c5c9d2; }
-  button.small { padding: 4px 9px; font-size: 12px; }
-  button:disabled { opacity: .5; cursor: default; }
-  select, input { font: inherit; border: 0; border-radius: 10px; padding: 7px 10px; background: var(--bg);
-                  box-shadow: var(--inset); color: var(--ink); }
-  .card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; }
-  .muted { color: var(--muted); }
-  .mono { font-family: var(--mono); }
-
-  header { display: flex; align-items: center; gap: 16px; padding: 12px 18px; flex-wrap: wrap; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo h1 { font-size: 22px; letter-spacing: -.5px; }
-  .logo small { display: block; color: var(--muted); font-size: 12px; }
-  .clock { font-family: var(--mono); font-size: 26px; font-weight: 700; padding: 4px 14px; border-radius: 12px;
-           box-shadow: var(--inset); }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
-           letter-spacing: .3px; color: #fff; background: var(--grey); white-space: nowrap; }
-  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
-  #timeline { width: 220px; }
-  nav { display: flex; gap: 8px; padding: 0 18px 10px; flex-wrap: wrap; }
-  nav button.on { box-shadow: var(--inset); color: var(--red); font-weight: 700; }
-  main { padding: 0 18px 24px; }
-  .tab { display: none; }
-  .tab.on { display: block; }
-
-  .ops { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr); gap: 16px; }
-  @media (max-width: 1100px) { .ops { grid-template-columns: 1fr; } }
-  #map { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); box-shadow: var(--inset); }
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-  .tile { border-radius: 12px; padding: 8px; box-shadow: var(--inset); cursor: pointer; }
-  .tile b { display: block; font-size: 22px; font-family: var(--mono); }
-  .tile span { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; }
-  .side { display: flex; flex-direction: column; gap: 14px; }
-  .alert { border-left: 5px solid var(--grey); padding: 8px 10px; border-radius: 10px; background: var(--bg);
-           margin-bottom: 8px; }
-  .alert .acts { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .scroll { max-height: 330px; overflow: auto; padding-right: 4px; }
-  .sc { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
-  .sc:last-child { border: 0; }
-  .sc .num { font-family: var(--mono); font-weight: 700; color: var(--red); width: 18px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  tr.click { cursor: pointer; }
-  tr.click:hover { background: var(--bg2); }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .fleet { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
-  .fleet div { box-shadow: var(--inset); border-radius: 10px; padding: 6px 2px; }
-  .fleet b { display: block; font-family: var(--mono); font-size: 18px; }
-  .fleet span { font-size: 10.5px; color: var(--muted); }
-
-  #drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(460px, 100%); background: var(--bg);
-            box-shadow: -10px 0 30px #b9bec9; padding: 18px; overflow: auto; transform: translateX(105%);
-            transition: transform .2s; z-index: 10; }
-  #drawer.on { transform: none; }
-  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 10px; font-size: 13px; margin: 10px 0; }
-  .kv div:nth-child(odd) { color: var(--muted); }
-  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--blue); }
-  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
-  .hist { font-size: 12px; border-left: 2px solid var(--line); padding-left: 10px; }
-  .hist div { margin-bottom: 6px; }
-
-  .phone { width: min(400px, 100%); margin: 0 auto; border-radius: 34px; padding: 20px; background: var(--card);
-           box-shadow: var(--shadow); }
-  .light { width: 120px; height: 120px; border-radius: 50%; margin: 14px auto; box-shadow: var(--inset);
-           display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 15px;
-           text-align: center; }
-  .light.red { background: var(--red); animation: pulse .6s infinite alternate; }
-  .light.amber { background: var(--amber); animation: pulse 1s infinite alternate; }
-  .light.green { background: var(--green); }
-  @keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
-  .flash { animation: flash 1s infinite; }
-  @keyframes flash { 50% { background: #ffd9da; } }
-  .pass { width: min(520px, 100%); margin: 0 auto; }
-  .feedline { font-family: var(--mono); font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--line);
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #busy { position: fixed; inset: 0; background: rgba(230,233,239,.75); display: none; align-items: center;
-          justify-content: center; z-index: 20; font-size: 20px; font-weight: 700; }
-  #busy.on { display: flex; }
-  .note { font-size: 12px; color: var(--muted); }
-  #ltmap, #ltspark { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg2); box-shadow: var(--inset); }
-  .ltstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
-  .ltstats div { box-shadow: var(--inset); border-radius: 12px; padding: 10px; text-align: center; }
-  .ltstats span { display: block; font-size: 12px; color: var(--muted); }
-  .ltstats b { font-family: var(--mono); font-size: 26px; }
-  .ltcal { box-shadow: var(--inset); border-radius: 12px; padding: 10px 12px; margin: 4px 0 12px; }
-  .ltcal summary { cursor: pointer; }
-  .ltcal table { border-collapse: collapse; font-size: 13px; }
-  .ltcal td, .ltcal th { padding: 3px 10px 3px 0; text-align: left; }
-  #lttag { transition: transform 300ms linear; }
-  #lttag.flash circle { animation: ltblink .35s infinite alternate; }
-  @keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
-</style>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <header>
   <div class="logo">
-    <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M17 0C7.6 0 0 7.6 0 17c0 12 17 23 17 23s17-11 17-23C34 7.6 26.4 0 17 0z" fill="#ED1C24"/><circle cx="17" cy="16" r="6.5" fill="#fff"/></svg>
+    <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M17 0C7.6 0 0 7.6 0 17c0 12 17 23 17 23s17-11 17-23C34 7.6 26.4 0 17 0z" fill="#E3141B"/><circle cx="17" cy="16" r="6.5" fill="#fff"/></svg>
     <div><h1>AutoTrack</h1><small>Daniel Solutions &middot; catch the wrong-plane bag before it leaves</small></div>
   </div>
   <div class="clock" id="clock">--:--:--</div>
@@ -201,7 +93,7 @@
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:8px">
             <h3>Baggage hall (simplified layout, not YYZ)</h3>
-            <span class="note">dots = AutoTrack's position estimate &middot; <span style="color:var(--red)">red belt</span> = jammed</span>
+            <span class="note">bags ride the belts as in the simulation &middot; <b style="color:var(--red)">red outline</b> = zone AutoTrack thinks the selected bag is in &middot; <b style="color:var(--red)">red belt</b> = jammed</span>
           </div>
           <svg id="map" viewBox="20 0 1010 760"></svg>
           <div class="row note" style="margin-top:6px" id="legend"></div>
@@ -293,16 +185,19 @@
 
 <script>
 const STATUS = {
-  "IDENTITY FLAG": "#B00020", "WRONG AIRCRAFT": "#ED1C24", "IDENTITY REVIEW": "#7C3AED", "MISROUTED": "#E8890C",
-  "TAG NOT RETURNED": "#B45309", "NOT SEEN": "#6B7280", "LATE": "#2563EB", "ON TRACK": "#1F9D55" };
-const KIND = { checkin: "#2563EB", transfer: "#0EA5E9", sortation: "#475569", transport: "#9F7AEA",
-               storage: "#A855F7", makeup: "#1F9D55" };
+  "IDENTITY FLAG": "#7A0B0F", "WRONG AIRCRAFT": "#E3141B", "IDENTITY REVIEW": "#7C3AED", "MISROUTED": "#F59E0B",
+  "TAG NOT RETURNED": "#B45309", "NOT SEEN": "#6B7280", "LATE": "#2563EB", "ON TRACK": "#16803F" };
+// text colour that reads well ON each status colour (amber needs dark text)
+const ON_STATUS = (st) => st === "MISROUTED" ? "#1C1D20" : "#fff";
+// status colour used as TEXT on white (amber is too faint as text)
+const STATUS_TEXT = (st) => st === "MISROUTED" ? "#8A5A00" : STATUS[st];
+const KIND_LABEL = { checkin: "Check-in", transfer: "Transfer input", sortation: "Sortation (RFID tunnel)",
+               transport: "Transport", storage: "Early bag storage", makeup: "Make-up + loader (RFID portal)" };
 let L = null, S = null, lastSeq = 0, openBag = null, feedLines = [];
 const POLL_MS = 250;          // ask the server for the latest state 4 times a second
-const dotEls = new Map();     // bag id -> its dot on the map (kept between updates)
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const pill = (st) => `<span class="badge" style="background:${STATUS[st] || "#888"}">${esc(st)}</span>`;
+const pill = (st) => `<span class="badge" style="background:${STATUS[st] || "#44474F"};color:${ON_STATUS(st)}">${esc(st)}</span>`;
 
 async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); return r.json(); }
 async function post(url, body) {
@@ -314,9 +209,9 @@ async function post(url, body) {
 async function init() {
   L = await get("/api/layout");
   drawMapBase();
-  $("legend").innerHTML = Object.entries({ "Check-in": KIND.checkin, "Transfer input": KIND.transfer, "Sortation (RFID tunnel)": KIND.sortation,
-    "Transport": KIND.transport, "Early bag storage": KIND.storage, "Make-up + loader (RFID portal)": KIND.makeup })
-    .map(([k, c]) => `<span><svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="${c}"/></svg> ${k}</span>`).join(" ");
+  $("legend").innerHTML = Object.entries(KIND_LABEL)
+    .map(([k, t]) => `<span><svg width="14" height="14"><rect class="cp k-${k}" x="1.5" y="1.5" width="11" height="11" style="stroke-width:2"/></svg> ${t}</span>`).join(" ")
+    + ` <span><svg width="26" height="14"><rect x="0" y="3" width="26" height="8" fill="#A3A8AF" stroke="#1C1D20" stroke-width="2"/></svg> conveyor belt</span>`;
   $("filter").innerHTML += Object.keys(STATUS).map(s => `<option>${s}</option>`).join("");
   $("scenarios").innerHTML = L.scenarios.map((s, i) => `
     <div class="sc"><div class="num">${i + 1}</div><div style="flex:1"><b>${esc(s.title)}</b>
@@ -343,37 +238,132 @@ async function init() {
   loop(); feedLoop(); liveLoop();
 }
 
-function px(n) { return [n.x, n.y]; }
+// ---------------------------------------------------------------- the baggage-hall map
+// Checkpoints (one BLE receiver + zone each) are squares. Conveyor belts are gray columns
+// between them, with chevrons showing which way they run; two-way belts get two lanes side by
+// side. Bags are small squares that travel ALONG the belts (where the simulation says they
+// physically are), coloured by AutoTrack's status. The red outline shows the zone AutoTrack
+// THINKS the selected bag is in (from the noisy Bluetooth signal).
+const SQ = 46;            // checkpoint square size (px in map units)
+const LANE_GAP = 8;       // how far apart the two lanes of a two-way belt are
+let NODES = {}, LANES = {};
+
+function laneKey(a, b) { return a + ">" + b; }
+
+function buildLanes() {
+  NODES = Object.fromEntries(L.nodes.map(n => [n.id, n]));
+  LANES = {};
+  for (const b of L.belts) {
+    const a = NODES[b.from], c = NODES[b.to];
+    const two = L.belts.some(x => x.from === b.to && x.to === b.from);
+    const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    const off = two ? LANE_GAP : 0;                     // two-way: each direction gets its own lane
+    const ox = -uy * off, oy = ux * off;
+    // where the column leaves / enters the squares (the edge of the square along this direction)
+    const edge = (SQ / 2) / Math.max(Math.abs(ux), Math.abs(uy));
+    LANES[laneKey(b.from, b.to)] = {
+      from: b.from, to: b.to, two, len,
+      x1: a.x + ox, y1: a.y + oy, x2: c.x + ox, y2: c.y + oy,                         // centre to centre
+      ex1: a.x + ox + ux * edge, ey1: a.y + oy + uy * edge,                            // square edge to edge
+      ex2: c.x + ox - ux * edge, ey2: c.y + oy - uy * edge, ux, uy,
+    };
+  }
+}
 
 function drawMapBase() {
-  const nodes = Object.fromEntries(L.nodes.map(n => [n.id, n]));
-  let s = `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
-           <path d="M0,0 L10,5 L0,10 z" fill="#9aa1b1"/></marker></defs><g id="belts">`;
-  const seen = new Set();
-  for (const b of L.belts) {
-    const a = nodes[b.from], c = nodes[b.to];
-    const key = [b.from, b.to].sort().join("-");
-    const two = L.belts.some(x => x.from === b.to && x.to === b.from);
-    if (two && seen.has(key)) continue; seen.add(key);
-    // stop the line short of the circle so the arrow is visible
-    const dx = c.x - a.x, dy = c.y - a.y, len = Math.hypot(dx, dy), k = 24 / len;
-    s += `<line id="belt-${b.from}-${b.to}" x1="${a.x + dx * k}" y1="${a.y + dy * k}" x2="${c.x - dx * k}" y2="${c.y - dy * k}"
-          stroke="#aab0bf" stroke-width="4" stroke-linecap="round" ${two ? "" : 'marker-end="url(#arr)"'}/>`;
-    if (two) s += `<line id="belt-${b.to}-${b.from}" x1="0" y1="0" x2="0" y2="0" stroke="none"/>`;
+  buildLanes();
+  let s = `<g id="belts">`;
+  // dark outlines first (so two-lane belts read as one wide conveyor), then the gray columns
+  for (const l of Object.values(LANES))
+    s += `<line class="belt-edge" x1="${l.ex1}" y1="${l.ey1}" x2="${l.ex2}" y2="${l.ey2}"/>`;
+  for (const l of Object.values(LANES)) {
+    s += `<line class="belt" id="belt-${l.from}-${l.to}" x1="${l.ex1}" y1="${l.ey1}" x2="${l.ex2}" y2="${l.ey2}"><title>Belt ${l.from} → ${l.to}</title></line>`;
+    // chevrons pointing the way the belt runs
+    for (const f of l.len > 200 ? [0.33, 0.66] : [0.5]) {
+      const cx = l.ex1 + (l.ex2 - l.ex1) * f, cy = l.ey1 + (l.ey2 - l.ey1) * f, ang = Math.atan2(l.uy, l.ux) * 180 / Math.PI;
+      s += `<path class="belt-chevron" d="M-4,-4 L3,0 L-4,4 Z" transform="translate(${cx},${cy}) rotate(${ang})"/>`;
+    }
   }
   s += `</g><g id="rings"></g><g id="zones">`;
   for (const n of L.nodes) {
-    s += `<g class="zone" onclick="filterZone('${n.id}')" style="cursor:pointer">
-      <circle cx="${n.x}" cy="${n.y}" r="20" fill="${KIND[n.kind]}" stroke="#fff" stroke-width="3"/>
-      <text x="${n.x}" y="${n.y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${n.id}</text>
-      <text id="occ-${n.id}" x="${n.x + 17}" y="${n.y - 15}" font-size="11" font-weight="700" fill="#1d2230"></text>`;
-    if (n.flight) s += `<text x="${n.x}" y="${n.y + (n.id.startsWith("GA") ? -28 : 36)}" text-anchor="middle" font-size="11" fill="#5d6475">${n.flight.flight}</text>
-      <rect id="lamp-${n.id}" x="${n.x - 33}" y="${n.y - 7}" width="9" height="14" rx="3" fill="#1F9D55"/>`;
+    const h = SQ / 2, dark = n.kind === "makeup";
+    s += `<g class="zone" onclick="filterZone('${n.id}')" style="cursor:pointer"><title>${esc(n.name)}</title>
+      <rect class="cp-shadow" x="${n.x - h + 4}" y="${n.y - h + 4}" width="${SQ}" height="${SQ}"/>
+      <rect class="cp k-${n.kind}" x="${n.x - h}" y="${n.y - h}" width="${SQ}" height="${SQ}"/>
+      <text class="cp-text${dark ? " on-dark" : ""}" x="${n.x}" y="${n.y - 5}">${n.id}</text>
+      <g id="occ-${n.id}" style="display:none"><rect class="cp-count-bg" x="${n.x + h - 9}" y="${n.y - h - 9}" width="18" height="16"/>
+        <text class="cp-count" x="${n.x + h}" y="${n.y - h + 3}" text-anchor="middle"></text></g>`;
+    if (n.flight) s += `<text class="flight-label" x="${n.x}" y="${n.y + (n.id.startsWith("GA") ? -h - 10 : h + 18)}" text-anchor="middle">${n.flight.flight}</text>
+      <rect class="lamp green" id="lamp-${n.id}" x="${n.x - h - 14}" y="${n.y - 8}" width="9" height="16"/>`;
     s += `</g>`;
   }
   s += `</g><g id="dots"></g><g id="fallen"></g>`;
   $("map").innerHTML = s;
 }
+
+// ---------- bags travelling along the belts
+// For each bag we remember where it was drawn and animate it to the newest position along the
+// lanes (through the checkpoint square if it moved onto the next belt), every animation frame.
+const bagAnim = new Map();   // bag id -> {g, at: [from, to, frac], path: [...], t0, dur}
+
+function lanePoint(from, to, frac, id) {
+  if (from === to || !LANES[laneKey(from, to)]) {        // waiting in a square: small fixed spot inside it
+    const n = NODES[from]; if (!n) return null;
+    let hsh = 0; for (const ch of id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    return [n.x + ((hsh % 5) - 2) * 8, n.y + 13];  // bottom half of the square, under its name
+  }
+  const l = LANES[laneKey(from, to)];
+  return [l.x1 + (l.x2 - l.x1) * frac, l.y1 + (l.y2 - l.y1) * frac];
+}
+
+function planPath(at, to) {
+  // Returns a list of [from, to, f0, f1] legs from position `at` to position `to`, along belts.
+  const [a1, a2, af] = at, [b1, b2, bf] = to;
+  if (a1 === b1 && a2 === b2) return bf >= af ? [[a1, a2, af, bf]] : null;      // same belt, forward
+  if (a1 === a2) return a1 === b1 ? [[b1, b2, 0, bf]] : null;                    // left a square onto a belt
+  if (b1 === b2) return a2 === b1 ? [[a1, a2, af, 1]] : null;                    // reached the next square
+  if (a2 === b1) return [[a1, a2, af, 1], [b1, b2, 0, bf]];                      // onto the next belt
+  if (LANES[laneKey(a2, b1)]) return [[a1, a2, af, 1], [a2, b1, 0, 1], [b1, b2, 0, bf]]; // skipped one belt
+  return null;                                                                    // can't tell: jump
+}
+
+function placeBag(id, b) {
+  let A = bagAnim.get(id);
+  if (!A) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.innerHTML = `<rect class="bag" x="-6" y="-6" width="12" height="12" style="cursor:pointer"><title></title></rect>
+                   <text class="bag-label" x="12" y="-10"></text>`;
+    g.firstElementChild.onclick = () => showBag(id);
+    $("dots").appendChild(g);
+    A = { g, at: b.belt, path: null };
+    bagAnim.set(id, A);
+    const p = lanePoint(b.belt[0], b.belt[1], b.belt[2], id);
+    if (p) g.setAttribute("transform", `translate(${p[0]},${p[1]})`);
+  } else {
+    const same = A.at && A.at.join() === b.belt.join();
+    if (!same) {
+      const path = planPath(A.at, b.belt);
+      A.path = path ? path.map(([f, t, f0, f1]) => ({ f, t, f0, f1, len: Math.max(1, (LANES[laneKey(f, t)] || { len: 1 }).len * (f1 - f0)) })) : null;
+      if (!path) { const p = lanePoint(b.belt[0], b.belt[1], b.belt[2], id); if (p) A.g.setAttribute("transform", `translate(${p[0]},${p[1]})`); }
+      A.t0 = performance.now(); A.dur = POLL_MS * 1.1; A.at = b.belt;
+    }
+  }
+  return A;
+}
+
+function animateBags(now) {
+  for (const [id, A] of bagAnim) {
+    if (!A.path) continue;
+    const total = A.path.reduce((s, leg) => s + leg.len, 0);
+    let d = Math.min(1, (now - A.t0) / A.dur) * total, leg = A.path[A.path.length - 1], f = leg.f1;
+    for (const L2 of A.path) { if (d <= L2.len) { leg = L2; f = L2.f0 + (L2.f1 - L2.f0) * (d / L2.len); break; } d -= L2.len; }
+    const p = lanePoint(leg.f, leg.t, f, id);
+    if (p) A.g.setAttribute("transform", `translate(${p[0].toFixed(1)},${p[1].toFixed(1)})`);
+    if (now - A.t0 >= A.dur) A.path = null;
+  }
+  requestAnimationFrame(animateBags);
+}
+requestAnimationFrame(animateBags);
 
 function filterZone(z) { $("search").value = z; renderBags(); }
 
@@ -387,14 +377,14 @@ function render() {
   $("clock").textContent = S.clock;
   $("phase").textContent = S.phase;
   $("mode").textContent = S.mode === "real" ? "REAL BLE + SIM" : "SIMULATION";
-  $("mode").style.background = S.mode === "real" ? "#ED1C24" : "#5d6475";
+  $("mode").style.background = S.mode === "real" ? "#E3141B" : "#44474F";
   $("play").textContent = S.playing ? "Pause" : "Play";
   if (document.activeElement !== $("speed")) $("speed").value = String(S.speed);
   if (document.activeElement !== $("timeline")) $("timeline").value = S.t;
   $("busy").textContent = S.busy || ""; $("busy").classList.toggle("on", !!S.busy);
   // tiles
   $("tiles").innerHTML = Object.entries(S.counts).map(([k, v]) =>
-    `<div class="tile" onclick="$('filter').value='${k}';renderBags()" style="${v && k !== "ON TRACK" ? `color:${STATUS[k]}` : ""}">
+    `<div class="tile" onclick="$('filter').value='${k}';renderBags()" style="${v && k !== "ON TRACK" ? `color:${STATUS_TEXT(k)}` : ""}">
      <b>${v}</b><span>${k}</span></div>`).join("");
   // alerts
   $("nalerts").textContent = `(${S.alerts.length})`;
@@ -407,7 +397,7 @@ function render() {
   renderBags();
   renderLoader();
   if (openBag && (++drawerTick % 6 === 0)) refreshBag();
-  $("phase").style.background = S.t >= S.total ? "#ED1C24" : "";
+  $("phase").style.background = S.t >= S.total ? "#E3141B" : "";
   if (S.t >= S.total && !(S.live && S.live.id)) $("phase").textContent = "hour finished - press Restart";
 }
 let drawerTick = 0;
@@ -439,68 +429,46 @@ async function act(bag, action) {
 
 function renderMap() {
   for (const n of L.nodes) {
-    const o = S.occupancy[n.id]; $("occ-" + n.id).textContent = o ? o : "";
-    if (n.kind === "makeup") {
-      const l = S.loaders[n.id];
-      $("lamp-" + n.id).setAttribute("fill", { red: "#ED1C24", amber: "#E8890C", green: "#1F9D55" }[l.light] || "#888");
-    }
+    const o = S.occupancy[n.id], g = $("occ-" + n.id);
+    g.style.display = o ? "" : "none"; if (o) g.lastElementChild.textContent = o;
+    if (n.kind === "makeup") $("lamp-" + n.id).setAttribute("class", "lamp " + (S.loaders[n.id].light || "green"));
   }
-  document.querySelectorAll("#belts line").forEach(e => { if (e.getAttribute("stroke") !== "none") { e.setAttribute("stroke", "#aab0bf"); e.removeAttribute("stroke-dasharray"); } });
-  for (const j of S.jams) {
-    let e = $(`belt-${j.from}-${j.to}`);
-    if (e && e.getAttribute("stroke") === "none") e = $(`belt-${j.to}-${j.from}`);
-    if (e) { e.setAttribute("stroke", "#ED1C24"); e.setAttribute("stroke-dasharray", "8 6"); }
-  }
-  // rings for the followed bag: primary zone solid, nearby zones dashed
-  const nodes = Object.fromEntries(L.nodes.map(n => [n.id, n]));
+  document.querySelectorAll("#belts .belt").forEach(e => e.classList.remove("jam"));
+  for (const j of S.jams) { const e = $(`belt-${j.from}-${j.to}`); if (e) e.classList.add("jam"); }
+  // outline the zone AutoTrack thinks the selected bag is in (solid) and the nearby zones (dashed)
   const fb = S.bags.find(b => b.id === (openBag || S.follow));
   let r = "";
-  if (fb && fb.zone && nodes[fb.zone]) {
-    const n = nodes[fb.zone];
-    r += `<circle cx="${n.x}" cy="${n.y}" r="34" fill="none" stroke="#ED1C24" stroke-width="4"/>`;
+  if (fb && fb.zone && NODES[fb.zone]) {
+    const n = NODES[fb.zone], h = SQ / 2 + 9;
+    r += `<rect class="ring-primary" x="${n.x - h}" y="${n.y - h}" width="${2 * h}" height="${2 * h}"/>`;
     for (const z of fb.nearby || []) {
-      const m = nodes[z.zone]; if (!m) continue;
-      r += `<circle cx="${m.x}" cy="${m.y}" r="30" fill="none" stroke="#ED1C24" stroke-width="2" stroke-dasharray="5 5" opacity="${z.strength === "strong" ? .9 : z.strength === "medium" ? .6 : .35}"/>`;
+      const m = NODES[z.zone]; if (!m) continue; const h2 = SQ / 2 + 6;
+      r += `<rect class="ring-near" x="${m.x - h2}" y="${m.y - h2}" width="${2 * h2}" height="${2 * h2}" opacity="${z.strength === "strong" ? .9 : z.strength === "medium" ? .6 : .35}"/>`;
     }
   }
   $("rings").innerHTML = r;
-  // dots at AutoTrack's weighted-centroid estimate (metres -> pixels)
-  // Each bag keeps the same SVG element between updates, so the browser can slide it smoothly
-  // to its new position (CSS transition) instead of the dot jumping every update.
-  const k = 1 / L.m_per_px;
-  const layer = $("dots"), seen = new Set();
+  // bags on the belts
+  const seen = new Set();
   for (const b of S.bags) {
-    if (!b.centroid || b.tag_detached) continue;
+    if (!b.belt) continue;
     seen.add(b.id);
-    let g = dotEls.get(b.id);
-    if (!g) {
-      g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.innerHTML = `<circle cx="0" cy="0" opacity=".9" style="cursor:pointer"><title></title></circle>
-                     <text x="12" y="-10" font-size="13" font-weight="800"></text>`;
-      g.firstElementChild.onclick = () => showBag(b.id);
-      g.style.transform = `translate(${b.centroid[0] * k}px, ${b.centroid[1] * k}px)`;
-      layer.appendChild(g);
-      dotEls.set(b.id, g);
-      void g.getBoundingClientRect();  // place it first, then turn on the glide
-      g.style.transition = `transform ${POLL_MS}ms linear`;
-    }
-    const big = fb && fb.id === b.id;
-    const c = g.firstElementChild;
-    c.setAttribute("r", big ? 9 : b.status === "ON TRACK" ? 4 : 6.5);
-    c.setAttribute("fill", STATUS[b.status]);
-    c.setAttribute("stroke", big ? "#000" : "#fff");
-    c.setAttribute("stroke-width", big ? 2.5 : 1);
-    c.firstElementChild.textContent = `${b.id} ${b.status}`;
-    g.lastElementChild.textContent = big ? b.id : "";
-    g.style.transform = `translate(${b.centroid[0] * k}px, ${b.centroid[1] * k}px)`;
-    if (big) layer.appendChild(g);  // draw the followed bag on top
+    const A = placeBag(b.id, b), big = fb && fb.id === b.id, rect = A.g.firstElementChild;
+    const s = big ? 18 : b.status === "ON TRACK" ? 11 : 14;
+    rect.setAttribute("x", -s / 2); rect.setAttribute("y", -s / 2); rect.setAttribute("width", s); rect.setAttribute("height", s);
+    rect.setAttribute("fill", STATUS[b.status]);
+    rect.setAttribute("class", "bag" + (big ? " followed" : ""));
+    rect.firstElementChild.textContent = `${b.id} ${b.status}`;
+    A.g.lastElementChild.textContent = big ? b.id : "";
+    if (big) $("dots").appendChild(A.g);  // draw the selected bag on top
   }
-  for (const [id, g] of dotEls) if (!seen.has(id)) { g.remove(); dotEls.delete(id); }
+  for (const [id, A] of bagAnim) if (!seen.has(id)) { A.g.remove(); bagAnim.delete(id); }
+  // BLE tags that fell off and are lying on the floor
+  const k = 1 / L.m_per_px;
   let d = "";
   for (const t of S.fallen_tags) {
     const x = t.x * k, y = t.y * k;
-    d += `<g><path d="M${x - 7},${y - 7} L${x + 7},${y + 7} M${x + 7},${y - 7} L${x - 7},${y + 7}" stroke="#1d2230" stroke-width="3"/>
-          <text x="${x + 10}" y="${y + 18}" font-size="11">${t.tag} lying here</text></g>`;
+    d += `<g><path class="fallen" d="M${x - 7},${y - 7} L${x + 7},${y + 7} M${x + 7},${y - 7} L${x - 7},${y + 7}"/>
+          <text class="fallen-text" x="${x + 10}" y="${y + 18}">${t.tag} lying here</text></g>`;
   }
   $("fallen").innerHTML = d;
 }
@@ -525,30 +493,32 @@ async function beep(mode) { const r = await post("/api/live/beep", { mode }); if
 const LT = { maxM: 7, x0: 130, x1: 960, y: 140 };
 const ltX = (m) => LT.x0 + Math.min(m, LT.maxM) / LT.maxM * (LT.x1 - LT.x0);
 function drawLiveBase() {
-  let s = `<rect id="ltgood" x="${LT.x0}" y="${LT.y - 45}" width="0" height="90" fill="#1F9D55" opacity=".12"/>
-    <rect id="ltbad" x="0" y="${LT.y - 45}" width="0" height="90" fill="#ED1C24" opacity=".10"/>
-    <line x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}" stroke="#aab0bf" stroke-width="4" stroke-linecap="round"/>`;
+  // Same look as the hall map: the distance track is a gray "belt" column, the tag a square.
+  let s = `<rect class="lt-good" id="ltgood" x="${LT.x0}" y="${LT.y - 45}" width="0" height="90"/>
+    <rect class="lt-bad" id="ltbad" x="0" y="${LT.y - 45}" width="0" height="90"/>
+    <line class="lt-track-edge" x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}"/>
+    <line class="lt-track" x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}"/>`;
   for (let m = 0; m <= LT.maxM; m++) {
-    s += `<line x1="${ltX(m)}" y1="${LT.y + 45}" x2="${ltX(m)}" y2="${LT.y + 55}" stroke="#8a90a0" stroke-width="2"/>
-      <text x="${ltX(m)}" y="${LT.y + 72}" text-anchor="middle" font-size="14" fill="#5d6475">${m} m${m === LT.maxM ? "+" : ""}</text>`;
+    s += `<line class="lt-tick" x1="${ltX(m)}" y1="${LT.y + 45}" x2="${ltX(m)}" y2="${LT.y + 55}" stroke="#1C1D20" stroke-width="2"/>
+      <text class="lt-ticktext" x="${ltX(m)}" y="${LT.y + 72}" text-anchor="middle">${m} m${m === LT.maxM ? "+" : ""}</text>`;
   }
   // the laptop = the checkpoint
-  s += `<g transform="translate(40, ${LT.y - 32})"><rect x="0" y="0" width="70" height="44" rx="5" fill="#1d2230"/>
-      <rect x="5" y="5" width="60" height="34" rx="2" fill="#7fb3ff"/><rect x="-8" y="46" width="86" height="8" rx="3" fill="#1d2230"/></g>
-    <text x="75" y="${LT.y + 46}" text-anchor="middle" font-size="13" font-weight="700">Laptop</text>
-    <text x="75" y="${LT.y + 62}" text-anchor="middle" font-size="12" fill="#5d6475">(checkpoint)</text>
-    <line id="ltthrline" x1="0" y1="${LT.y - 60}" x2="0" y2="${LT.y + 45}" stroke="#ED1C24" stroke-width="3" stroke-dasharray="8 6"/>
-    <text id="ltthrtext" x="0" y="${LT.y - 66}" text-anchor="middle" font-size="13" font-weight="700" fill="#ED1C24"></text>
-    <rect id="ltrange" x="0" y="${LT.y - 8}" width="0" height="16" rx="8" fill="#2563EB" opacity=".18"/>
+  s += `<g transform="translate(40, ${LT.y - 32})"><rect class="lt-laptop" x="0" y="0" width="70" height="44"/>
+      <rect class="lt-screen" x="6" y="6" width="58" height="32"/><rect class="lt-laptop" x="-8" y="46" width="86" height="8"/></g>
+    <text class="lt-label" x="75" y="${LT.y + 46}" text-anchor="middle">LAPTOP</text>
+    <text class="lt-ticktext" x="75" y="${LT.y + 62}" text-anchor="middle">(checkpoint)</text>
+    <line class="lt-thr" id="ltthrline" x1="0" y1="${LT.y - 60}" x2="0" y2="${LT.y + 45}"/>
+    <text class="lt-thrtext" id="ltthrtext" x="0" y="${LT.y - 66}" text-anchor="middle"></text>
+    <rect class="lt-range" id="ltrange" x="0" y="${LT.y - 9}" width="0" height="18"/>
     <g id="lttag" style="transform: translate(${LT.x0}px, ${LT.y}px)">
-      <circle r="18" fill="#2563EB" stroke="#fff" stroke-width="4"/>
-      <text y="5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">ESP</text>
-      <text id="lttaglabel" y="-28" text-anchor="middle" font-size="14" font-weight="800" fill="#1d2230"></text>
+      <rect class="lt-body" x="-19" y="-19" width="38" height="38" fill="#2563EB"/>
+      <text class="lt-bodytext" y="4" text-anchor="middle">ESP</text>
+      <text class="lt-label" id="lttaglabel" y="-30" text-anchor="middle"></text>
     </g>`;
   $("ltmap").innerHTML = s;
 }
-const LTSTATE = { ok: ["IN RANGE", "#1F9D55"], too_far: ["TOO FAR - tag flashing", "#ED1C24"],
-                  lost: ["LOST - no signal", "#ED1C24"], no_tag: ["waiting for tag", "#8a90a0"] };
+const LTSTATE = { ok: ["IN RANGE", "#1F9D55"], too_far: ["TOO FAR - tag flashing", "#E3141B"],
+                  lost: ["LOST - no signal", "#E3141B"], no_tag: ["waiting for tag", "#5E626B"] };
 async function liveLoop() {
   try {
     if (document.querySelector("#tab-live.on")) renderLiveTag(await get("/api/livetag"));
@@ -557,7 +527,7 @@ async function liveLoop() {
 }
 function renderLiveTag(d) {
   $("ltbadge").textContent = !d.real ? "not in real mode" : d.error ? "Bluetooth error" : d.scanning ? "Bluetooth scanning" : "starting";
-  $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#ED1C24";
+  $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#E3141B";
   $("lthelp").innerHTML = !d.real
     ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
     : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): on ${esc(d.laptops.profile.name)}'s laptop about ${Math.round(d.curve.rssi_1m)} dBm is 1 m, and below ${Math.round(d.threshold_dbm)} dBm (${d.threshold_m} m) the tag is too far and flashes red.
@@ -586,9 +556,9 @@ function renderLiveTag(d) {
   // signal over the last 60 s
   const W = 1000, H = 140, yOf = (r) => 10 + (Math.max(-90, Math.min(-10, r)) + 10) / -80 * (H - 20), xOf = (ago) => W + ago / 60 * W;
   let sp = "";
-  for (const r of [-20, -40, -60, -80]) sp += `<line x1="0" y1="${yOf(r)}" x2="${W}" y2="${yOf(r)}" stroke="#c9ceda"/><text x="6" y="${yOf(r) - 3}" font-size="11" fill="#8a90a0">${r} dBm</text>`;
-  sp += `<line x1="0" y1="${yOf(d.threshold_dbm)}" x2="${W}" y2="${yOf(d.threshold_dbm)}" stroke="#ED1C24" stroke-width="2" stroke-dasharray="8 6"/>`;
-  if (d.history.length > 1) sp += `<polyline fill="none" stroke="#2563EB" stroke-width="3" points="${d.history.map(([a, r]) => `${xOf(a).toFixed(1)},${yOf(r).toFixed(1)}`).join(" ")}"/>`;
+  for (const r of [-20, -40, -60, -80]) sp += `<line x1="0" y1="${yOf(r)}" x2="${W}" y2="${yOf(r)}" stroke="#c9ceda"/><text x="6" y="${yOf(r) - 3}" font-size="11" fill="#44474F">${r} dBm</text>`;
+  sp += `<line x1="0" y1="${yOf(d.threshold_dbm)}" x2="${W}" y2="${yOf(d.threshold_dbm)}" stroke="#E3141B" stroke-width="2" stroke-dasharray="8 6"/>`;
+  if (d.history.length > 1) sp += `<polyline fill="none" stroke="#1C1D20" stroke-width="3" points="${d.history.map(([a, r]) => `${xOf(a).toFixed(1)},${yOf(r).toFixed(1)}`).join(" ")}"/>`;
   $("ltspark").innerHTML = sp;
   $("ltevents").innerHTML = d.events.length ? d.events.map(e => `<div>${e.ago_s} s ago: ${esc(e.text)}</div>`).join("") : "Nothing yet.";
 }
@@ -698,7 +668,7 @@ function renderLoader() {
   light.className = "light " + l.light;
   light.textContent = { red: "STOP", amber: "HOLD", green: "OK" }[l.light] || "";
   $("lmsg").textContent = l.msg;
-  $("lpaused").innerHTML = l.paused ? `<span class="badge" style="background:#ED1C24;font-size:14px">BELT PAUSED</span>` : `<span class="note">Belt running</span>`;
+  $("lpaused").innerHTML = l.paused ? `<span class="badge" style="background:#E3141B;font-size:14px">BELT PAUSED</span>` : `<span class="note">Belt running</span>`;
   const al = S.alerts.filter(a => a.gate === g || (S.bags.find(b => b.id === a.bag) || {}).zone === g);
   $("lalerts").innerHTML = al.length ? al.map(alertHtml).join("") : `<div class="note">No alerts for ${g}.</div>`;
   const inLane = S.bags.filter(b => b.zone === g);

@@ -55,6 +55,8 @@ def main():
     p.add_argument("--host", default="127.0.0.1",
                    help="network address to listen on (default 127.0.0.1 = this laptop only). "
                         "Room demo: use 0.0.0.0 so the other laptops' reporters can reach this one")
+    p.add_argument("--udp-port", type=int, default=8765,
+                   help="Room demo: UDP port the other laptops' reporters send their filtered signal to")
     p.add_argument("--no-smoothing", action="store_true", help="turn off RSSI smoothing / zone hysteresis")
     p.add_argument("--no-browser", action="store_true")
     p.add_argument("--laptop", default=None,
@@ -69,7 +71,8 @@ def main():
 
     import uvicorn
     from autotrack import server
-    server.CONFIG.update(mode=a.mode, speed=a.speed, smoothing=not a.no_smoothing, laptop=a.laptop)
+    server.CONFIG.update(mode=a.mode, speed=a.speed, smoothing=not a.no_smoothing, laptop=a.laptop,
+                       host=a.host, udp_port=a.udp_port)
 
     url = f"http://127.0.0.1:{a.port}"
     print("=" * 60)
@@ -82,7 +85,11 @@ def main():
         print(" On each OTHER laptop run (change the name to whose laptop it is):")
         ip = ips[0] if ips else "<this laptop's IP>"
         print(f"     .venv\\Scripts\\python tools\\reporter.py --server http://{ip}:{a.port} --laptop joseph")
-        print(" If Windows Firewall asks: tick Private networks and press Allow.")
+        print(f"     (the reporter sends UDP datagrams to port {a.udp_port} by default;"
+              " it uses the same address as --server)")
+        print(" If Windows Firewall asks: tick Private networks and press Allow (needed for UDP too:")
+        print(f"     allow Python on private networks, or open UDP port {a.udp_port}).")
+        print(" If UDP is blocked, add  --transport http  to the reporter command (slower fallback).")
     print(" Press Ctrl+C to stop.")
     print("=" * 60, flush=True)
     if not a.no_browser:

@@ -17,7 +17,12 @@ What it does, in plain English:
   * Scans with the same Bluetooth code as the server (autotrack/real_ble.py), so
     only packets with a correct secret signature (HMAC) are counted.
   * Keeps every heard packet in a small buffer (signal strength + when it was heard).
-  * Every 0.25 s sends the buffer to the main laptop:
+  * DEFAULT (UDP): runs its own Kalman filter (same as the main laptop) on the RSSI and sends
+    ONE small UDP datagram every 0.2 s (a heartbeat even when nothing was heard) to port 8765:
+        {"v":1,"laptop":"joseph","seq":7,"rssi_filtered":-61.3,"variance":2.1,"raw_median":-62,
+         "packets":2,"t_age_ms":85}
+    The old behaviour below is kept with  --transport http.
+  * HTTP: every 0.25 s sends the buffer to the main laptop:
         POST /api/room/sightings  {"laptop": "joseph", "packets": [{"age_ms": 120, "rssi": -63}, ...]}
     "age_ms" = how long ago the packet was heard, so the two laptops' clocks
     don't need to agree.
@@ -36,10 +41,12 @@ import collections
 import json
 import os
 import random
+import socket
 import statistics
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,6 +54,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from autotrack.laptops import PROFILES_FILE, slug  # noqa: E402
+from autotrack.room import ONLINE_S, SIGMA_DB_DEFAULT, RssiKalman  # noqa: E402
 from autotrack.tagcrypto import load_keys  # noqa: E402
 
 DEFAULT_KEYS = os.path.join(ROOT, "data", "tag_keys.json")
@@ -54,6 +62,8 @@ MAX_BUFFER = 500       # the server refuses more than 500 packets per request
 MAX_AGE_S = 5.0        # older packets are useless for "where is the tag NOW"
 STATUS_EVERY_S = 2.0
 HTTP_TIMEOUT_S = 2.0
+UDP_PORT = 8765
+UDP_MIN_S, UDP_MAX_S = 0.1, 0.25    # allowed send interval for UDP
 
 
 def stamp():
@@ -78,11 +88,30 @@ class Reporter:
     from the fake source). sender_loop() runs forever and POSTs the buffer.
     """
 
-    def __init__(self, server, laptop, interval=0.25, log=print):
+    def __init__(self, server, laptop, interval=None, log=print, transport="udp",
+                 udp_port=UDP_PORT, clock=time.monotonic, sigma_db=SIGMA_DB_DEFAULT):
+        if transport not in ("udp", "http"):
+            raise ValueError("transport must be udp or http")
         self.server = normalise_server(server)
         self.laptop = laptop
-        self.interval = max(0.05, float(interval))
+        self.transport = transport
+        self.udp_port = int(udp_port)
+        self.clock = clock                     # one clock for packet times, the Kalman filter and datagrams
+        if transport == "udp":
+            interval = 0.2 if interval is None else interval
+            self.interval = max(UDP_MIN_S, min(UDP_MAX_S, float(interval)))
+        else:
+            self.interval = max(0.05, float(0.25 if interval is None else interval))
         self.log = log
+        # Same filter and parameters as the main laptop (room.RssiKalman, r = sigma^2).
+        self.kalman = RssiKalman()
+        self.r = float(sigma_db) ** 2
+        self.seq = 0                           # datagram counter (UDP)
+        self.dg_raw = []                       # raw RSSIs heard since the last datagram
+        self.last_heard = None                 # clock() time of the last packet
+        self.sock = None
+        self.udp_host = urllib.parse.urlsplit(self.server).hostname
+        self.last_filtered = None              # for the status line
         self.buffer = collections.deque()      # (time.monotonic() when heard, rssi)
         self.window = []                       # rssi values heard since the last status line
         self.dropped = 0                       # packets thrown away (buffer full / too old)
@@ -94,8 +123,15 @@ class Reporter:
     # ------------------------------------------------------------------ input
     def add(self, rssi, heard_at=None):
         """Remember one packet. Keeps at most MAX_BUFFER (drops the oldest)."""
-        self.buffer.append((heard_at if heard_at is not None else time.monotonic(), int(rssi)))
+        t = heard_at if heard_at is not None else self.clock()
+        if self.transport == "udp":
+            self.buffer.clear()                # the UDP path doesn't use the packet buffer
+        self.buffer.append((t, int(rssi)))
         self.window.append(int(rssi))
+        if self.transport == "udp":            # (the http fallback sends raw packets, no filter)
+            self.dg_raw.append(int(rssi))
+            self.last_heard = t if self.last_heard is None else max(self.last_heard, t)
+            self.kalman.update(t, float(rssi), self.r)
         while len(self.buffer) > MAX_BUFFER:
             self.buffer.popleft()
             self.dropped += 1
@@ -103,6 +139,48 @@ class Reporter:
     def on_sighting(self, s):
         """Callback for RealBLE: s = dict(receiver, tag_serial, rssi, t, counter)."""
         self.add(s["rssi"])
+
+    # ------------------------------------------------------------------ UDP
+    def build_datagram(self, now=None):
+        """The next datagram as a dict (pure: no network). Always built, also when nothing was heard."""
+        now = self.clock() if now is None else now
+        heard = self.last_heard is not None and now - self.last_heard <= ONLINE_S
+        k = self.kalman
+        fresh = heard and k.x is not None
+        raw = self.dg_raw
+        dg = {
+            "v": 1, "laptop": self.laptop, "seq": self.seq,
+            "rssi_filtered": round(k.x, 2) if fresh else None,
+            "variance": round(k.p, 3) if fresh else None,
+            "raw_median": statistics.median(raw) if raw else None,
+            "packets": len(raw),
+            "t_age_ms": None if self.last_heard is None else max(0, round((now - self.last_heard) * 1000)),
+        }
+        self.seq += 1
+        self.dg_raw = []
+        self.last_filtered = dg["rssi_filtered"]
+        return dg
+
+    def _udp_send(self, dg):
+        """Fire and forget. Errors are logged once per streak."""
+        data = json.dumps(dg, separators=(",", ":")).encode("utf-8")
+        try:
+            if self.sock is None:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.sock.setblocking(False)
+            self.sock.sendto(data, (self.udp_host, self.udp_port))
+        except (OSError, ValueError) as e:
+            if self.server_ok is not False:
+                self.log(f"{stamp()} cannot send UDP to {self.udp_host}:{self.udp_port}: {e}")
+                self.log("         -> Same Wi-Fi? Right address? (or use --transport http)")
+            self.server_ok = False
+            self.last_error = str(e) or type(e).__name__
+            return False
+        if self.server_ok is False:
+            self.log(f"{stamp()} UDP sending works again ({self.udp_host}:{self.udp_port})")
+        self.server_ok = True
+        self.sent_total += 1
+        return True
 
     # ------------------------------------------------------------------ sending
     def take_batch(self):
@@ -207,11 +285,14 @@ class Reporter:
         self.log(f"{stamp()} main laptop reachable at {self.server}")
 
     async def sender_loop(self):
-        """Forever: send the buffer every `interval` seconds, print a status line every ~2 s."""
+        """Forever: send every `interval` seconds, print a status line every ~2 s."""
         next_status = time.monotonic() + STATUS_EVERY_S
         while True:
             await asyncio.sleep(self.interval)
-            await self.send_once()
+            if self.transport == "udp":
+                self._udp_send(self.build_datagram())
+            else:
+                await self.send_once()
             if time.monotonic() >= next_status:
                 next_status = time.monotonic() + STATUS_EVERY_S
                 self.log(self.status_line())
@@ -222,6 +303,13 @@ class Reporter:
             text = f"heard {len(heard)} packets, median {statistics.median(heard):.0f} dBm"
         else:
             text = "heard 0 packets - is the tag powered on and in range?"
+        if self.transport == "udp":
+            text += f", filtered {self.last_filtered if self.last_filtered is not None else '-'} dBm"
+            if self.server_ok is False:
+                text += f", UDP SEND FAILING ({self.last_error})"
+            else:
+                text += f", udp -> {self.udp_host}:{self.udp_port}"
+            return f"{stamp()} {text}"
         if self.server_ok is True and self.refused:
             text += f", server REFUSING packets (HTTP {self.refused[0]})"
         elif self.server_ok is True:
@@ -255,13 +343,19 @@ def warn_if_uncalibrated(laptop):
 
 async def run(args):
     laptop = slug(args.laptop)
-    rep = Reporter(args.server, laptop, args.interval)
+    rep = Reporter(args.server, laptop, args.interval, transport=args.transport, udp_port=args.udp_port)
     print("=" * 64)
     print(f" AutoTrack reporter: laptop '{laptop}' -> {rep.server}")
     print(" Sends what this laptop hears to the main laptop. Ctrl+C to stop.")
     print("=" * 64, flush=True)
     warn_if_uncalibrated(laptop)
+    if rep.transport == "udp":
+        print(f" UDP: one datagram every {rep.interval:g} s to {rep.udp_host}:{rep.udp_port}")
+    # Quick HTTP check either way: UDP is fire-and-forget, so this is the only early sign that
+    # the main laptop (or its firewall) isn't reachable.
     await rep.check_server()
+    if rep.transport == "udp":
+        rep.server_ok = None      # from here on server_ok tracks UDP sending, not that HTTP check
 
     ble = None
     if args.fake:
@@ -304,7 +398,11 @@ def main():
                    help="the main laptop's address, as printed by run.py, e.g. http://192.168.1.23:8000")
     p.add_argument("--laptop", required=True,
                    help="whose laptop this is (e.g. joseph) - must match its calibration profile name")
-    p.add_argument("--interval", type=float, default=0.25, help="seconds between sends (default 0.25)")
+    p.add_argument("--transport", choices=["udp", "http"], default="udp",
+                   help="udp (default): send this laptop's own filtered signal; http: old fallback, raw packets")
+    p.add_argument("--udp-port", type=int, default=UDP_PORT, help="UDP port on the main laptop (default 8765)")
+    p.add_argument("--interval", type=float, default=None,
+                   help="seconds between sends (default 0.2 for udp, clamped to 0.1-0.25; 0.25 for http)")
     p.add_argument("--keys", default=DEFAULT_KEYS, help="path to tag_keys.json")
     p.add_argument("--fake", action="store_true",
                    help="no Bluetooth: send made-up packets to test the network connection")

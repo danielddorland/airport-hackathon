@@ -2,6 +2,15 @@
 
 Written Nov 8 from Alex's Claude Code session. Read this top to bottom on Daniel's laptop.
 
+> **Update (Nov 8, Daniel's session): steps 1-3 of the prompt in section 4 are DONE and pushed.**
+> - Review + fixes: OUT OF ZONE no longer fires while the tag is at/next to a laptop; "neighbouring laptops"
+>   now come from where they sit on the map; the HTTP test no longer needs the missing `httpx2` package.
+> - Firmware advertises every 100 ms (re-flash the ESP32 to get it).
+> - UDP pipeline: reporters run their own Kalman filter and send UDP to port 8765 (default);
+>   `--transport http` is the fallback. Tests: test_room 29/29, test_engine 14/14, test_tagcrypto 12/12.
+> - Still to do: the real-hardware test with 3-4 laptops (section 3), and the 4th laptop's calibration.
+>   On the main laptop, Windows Firewall must allow Python on private networks (TCP 8000 **and** UDP 8765).
+
 ## Where things stand
 
 | Done (committed on `room-demo`) | Not done yet |

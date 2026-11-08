@@ -219,7 +219,7 @@ def test_room_defaults_and_trilateration():
     assert abs(sum(a["weight"] for a in st["anchors"]) - 1.0) < 0.01
     keys = {"enabled", "now", "real", "sim", "anchors", "position", "raw_position", "velocity", "pos_sigma_m",
             "trail", "zone", "bag", "alert", "tag_mode", "tag_mode_sent", "last_write", "calibration",
-            "weights", "events"}
+            "weights", "events", "udp"}
     assert set(st) == keys, set(st) ^ keys
     clock.t += 4
     room.tick()
@@ -527,6 +527,224 @@ def _http_checks(c, server):
         assert c.get("/api/livetag").status_code == 200
         s = c.get("/api/state")
         assert s.status_code == 200 and "mode" in s.json()
+
+
+# --------------------------------------------------------------- UDP pipeline (filtered RSSI)
+
+def _dg(laptop="joseph", seq=0, rssi=-60.0, var=2.0, raw=-61.0, packets=2, age=50, v=1):
+    import json
+    return json.dumps({"v": v, "laptop": laptop, "seq": seq, "rssi_filtered": rssi, "variance": var,
+                       "raw_median": raw, "packets": packets, "t_age_ms": age}).encode()
+
+
+def _anchor(room, aid):
+    return next(a for a in room.state()["anchors"] if a["id"] == aid)
+
+
+def test_parse_datagram():
+    from autotrack.room import parse_datagram
+    d = parse_datagram(_dg())
+    assert d["laptop"] == "joseph" and d["seq"] == 0 and d["rssi_filtered"] == -60.0 and d["packets"] == 2
+    ok = parse_datagram(_dg(rssi=None, var=None, raw=None, packets=0, age=None))   # heartbeat
+    assert ok["rssi_filtered"] is None and ok["t_age_ms"] is None
+    for bad in (b"not json", b"[1,2]", _dg(v=2), _dg(rssi=5), _dg(rssi=-200), _dg(var=-1), _dg(packets=5000),
+                _dg(age=999999), _dg(laptop=""), _dg(seq=-1), b"x" * 3000, b"\xff\xfe",
+                b'{"v":1,"laptop":"a","seq":1}'):
+        try:
+            parse_datagram(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted bad datagram {bad[:40]!r}")
+
+
+def test_ingest_filtered_online_distance_offline():
+    room, clock = new_room("udp1")
+    want = rssi_at(room, "joseph", 1.5)
+    assert room.ingest_filtered("joseph", want, 2.0, want, 2, 0, 0) is True
+    room.tick()
+    a = _anchor(room, "joseph")
+    assert a["online"] and a["rssi"] == round(want, 1) and abs(a["distance_m"] - 1.5) < 0.05, a
+    assert a["raw"] == round(want, 1) and a["packets_s"] > 0
+    clock.t += 3.5                         # silence (even heartbeats say "never heard" -> not alive)
+    room.ingest_filtered("joseph", None, None, None, 0, 3500, 1)
+    room.tick()
+    a = _anchor(room, "joseph")
+    assert not a["online"] and a["rssi"] is None and a["distance_m"] is None
+
+
+def test_ingest_filtered_order_restart_sim_and_age():
+    room, clock = new_room("udp2")
+    assert room.ingest_filtered("joseph", -60, 2, -60, 1, 0, 5)
+    assert not room.ingest_filtered("joseph", -90, 2, -90, 1, 0, 5)        # duplicate
+    assert not room.ingest_filtered("joseph", -90, 2, -90, 1, 0, 4)        # out of order
+    assert room.live["joseph"].remote["rssi"] == -60
+    assert room.ingest_filtered("joseph", -61, 2, -61, 1, 0, 6)
+    assert room.ingest_filtered("joseph", -70, 2, -70, 1, 0, 3000)
+    assert room.ingest_filtered("joseph", -71, 2, -71, 1, 0, 3)            # far smaller: reporter restarted
+    assert room.live["joseph"].remote["rssi"] == -71
+    assert room.ingest_filtered("joseph", -72, 2, -72, 1, 0, 0)            # seq 0 = restart too
+    # t_age_ms shifts the heard time (and so the online window)
+    room.ingest_filtered("ocean", -60, 2, -60, 1, 2900, 1)
+    assert abs(room.live["ocean"].last_t - (clock.t - 2.9)) < 1e-6
+    clock.t += 0.5
+    room.tick()
+    assert not _anchor(room, "ocean")["online"]                            # heard 3.4 s ago
+    # heartbeat with "never heard" keeps a new laptop offline
+    room.ingest_filtered("sam", None, None, None, 0, None, 0)
+    assert room.live["sam"].last_t is None
+    # bad input
+    for args in ((5, 1, None, 1, 0, 1), (-60, -1, None, 1, 0, 1), (-60, 1, None, 5000, 0, 1), (-60, 1, None, 1, -1, 1)):
+        try:
+            room.ingest_filtered("joseph", args[0], args[1], args[2], args[3], args[4], 50 + args[5])
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted {args}")
+    room.set_sim(True)
+    assert room.ingest_filtered("daniel", -60, 2, -60, 1, 0, 1) is False
+    assert "daniel" not in room.live or room.live["daniel"].remote is None
+
+
+def test_filtered_mode_feeds_calibration_and_touch_capture():
+    room, clock = new_room("udp3")
+    room.ingest_filtered("alex", -50, 2, -50, 3, 0, 0)
+    room.start_calibration(1.0, 1.0, seconds=2.0)
+    for i in range(1, 15):
+        clock.t += 0.2
+        room.ingest_filtered("alex", -50, 2, -50 - (i % 3), 2, 0, i)
+        room.tick()
+    assert room.calib["phase"] == "done", room.calib
+    room.ingest_filtered("joseph", -40, 2, -40, 2, 0, 0)
+    for i in range(1, 8):
+        clock.t += 0.2
+        room.ingest_filtered("joseph", -40, 2, -40, 2, 0, i)
+    st = room.capture_touch("joseph")
+    assert abs(next(a for a in st["anchors"] if a["id"] == "joseph")["touch_dbm"] - (-43.0)) < 0.2
+
+
+def test_udp_end_to_end_position():
+    import socket
+
+    async def go():
+        room, clock = new_room("udp4")
+        transport, port = await room_mod.start_udp(room, "127.0.0.1", 0, log=quiet)
+        assert transport is not None and port
+        try:
+            tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            tag = (0.8, 1.1)
+            for seq in range(6):
+                for aid, a in room.anchors.items():
+                    d = math.hypot(tag[0] - a["x"], tag[1] - a["y"])
+                    tx.sendto(_dg(aid, seq, rssi_at(room, aid, d), 2.0, rssi_at(room, aid, d), 2, 40),
+                              ("127.0.0.1", port))
+                await asyncio.sleep(0.05)
+            for junk in (b"garbage", b"{}", _dg(v=9), _dg(rssi=55), b"z" * 3000):
+                tx.sendto(junk, ("127.0.0.1", port))
+            await asyncio.sleep(0.2)
+            tx.close()
+            room.tick()
+            clock.t += 0.2
+            room.tick()
+            st = room.state()
+            assert st["udp"]["rejected"] == 5 and st["udp"]["datagrams"] >= 29, st["udp"]
+            assert all(a["online"] for a in st["anchors"]), st["anchors"]
+            pos = st["raw_position"]
+            assert pos is not None and math.hypot(pos["x"] - tag[0], pos["y"] - tag[1]) < 0.15, pos
+            assert st["position"] is not None
+        finally:
+            transport.close()
+
+    asyncio.run(go())
+
+
+def test_udp_port_busy_is_not_fatal():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind(("127.0.0.1", 0))
+    msgs = []
+
+    async def go():
+        room, _ = new_room("udp5")
+        return await room_mod.start_udp(room, "127.0.0.1", s.getsockname()[1], log=msgs.append)
+
+    try:
+        res = asyncio.run(go())
+    finally:
+        s.close()
+    # On Windows a second bind of a UDP port fails; elsewhere it fails too unless SO_REUSEPORT is set.
+    assert res == (None, None) and msgs and "WARNING" in msgs[0], (res, msgs)
+
+
+def _reporter(**kw):
+    from tools import reporter
+    return reporter.Reporter("http://192.168.1.23:8000", "joseph", log=quiet, clock=kw.pop("clock", Clock()), **kw)
+
+
+def test_reporter_datagram_fields_and_heartbeat():
+    import json
+    clock = Clock(100.0)
+    rep = _reporter(clock=clock)
+    assert rep.udp_host == "192.168.1.23" and rep.interval == 0.2
+    dg = rep.build_datagram()
+    assert dg["seq"] == 0 and dg["packets"] == 0 and dg["rssi_filtered"] is None
+    assert dg["raw_median"] is None and dg["t_age_ms"] is None                       # never heard
+    for r in (-60, -62, -64):
+        rep.add(r)
+        clock.t += 0.05
+    clock.t += 0.05
+    dg = rep.build_datagram()
+    assert dg["seq"] == 1 and dg["packets"] == 3 and dg["raw_median"] == -62 and dg["v"] == 1
+    assert dg["t_age_ms"] == 100 and dg["laptop"] == "joseph"
+    assert -64 <= dg["rssi_filtered"] <= -60 and dg["variance"] > 0
+    assert len(json.dumps(dg)) < 512
+    clock.t += 0.2
+    dg = rep.build_datagram()                              # heartbeat, nothing new
+    assert dg["seq"] == 2 and dg["packets"] == 0 and dg["raw_median"] is None
+    assert dg["rssi_filtered"] is not None and dg["t_age_ms"] == 300
+    clock.t += 3.5
+    dg = rep.build_datagram()                              # unheard for > 3 s
+    assert dg["rssi_filtered"] is None and dg["variance"] is None and dg["t_age_ms"] >= 3500
+    # interval clamp for udp, none for http
+    assert _reporter(interval=0.01).interval == 0.1 and _reporter(interval=5).interval == 0.25
+    assert _reporter(transport="http").interval == 0.25
+
+
+def test_reporter_kalman_reduces_noise():
+    clock = Clock(0.0)
+    rep = _reporter(clock=clock)
+    rng = random.Random(7)
+    raw, filt = [], []
+    for _ in range(200):
+        z = round(-65 + rng.gauss(0, 4))
+        rep.add(z)
+        clock.t += 0.125
+        raw.append(z)
+        filt.append(rep.kalman.x)
+    assert statistics.pvariance(filt[20:]) < statistics.pvariance(raw[20:]) * 0.5
+
+
+def test_reporter_sends_udp_to_local_receiver():
+    import socket
+    from tools import reporter
+
+    async def go():
+        room, clock = new_room("udp6")
+        transport, port = await room_mod.start_udp(room, "127.0.0.1", 0, log=quiet)
+        rep = reporter.Reporter("http://127.0.0.1:8000", "joseph", interval=0.1, udp_port=port, log=quiet)
+        src = asyncio.ensure_future(reporter.fake_source(rep))
+        loop_task = asyncio.ensure_future(rep.sender_loop())
+        try:
+            await asyncio.sleep(1.0)
+        finally:
+            src.cancel()
+            loop_task.cancel()
+            transport.close()
+        return room, rep
+
+    room, rep = asyncio.run(go())
+    assert rep.sent_total >= 5 and rep.server_ok is True
+    lv = room.live["joseph"]
+    assert lv.remote is not None and lv.remote["rssi"] is not None and room.udp_stats["rejected"] == 0
+    rep.sock.close()
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ server.py - the web server (FastAPI). Everything runs on this laptop; no interne
   GET  /api/room                    positions, distances, bag status (the page polls it every 300 ms)
   POST /api/room/sightings          {"laptop": "joseph", "packets": [{"age_ms": 120, "rssi": -63}]}
                                     - sent by tools/reporter.py on the other laptops
+  UDP  <udp_port, default 8765>     {"v":1,"laptop":..,"seq":..,"rssi_filtered":..,...} from tools/reporter.py
   POST /api/room/config             change the layout, zone, bag, weights (partial update)
   POST /api/room/calibrate          {"x": 1, "y": 1, "seconds": 8} - "Calibrate room" (tag held still)
   POST /api/room/touch              {"id": "joseph"} - the tag is touching this laptop now: learn the level
@@ -49,7 +50,7 @@ from fastapi.staticfiles import StaticFiles
 from .laptops import Laptops
 from .layout import ROOT
 from .livetag import LiveTagMonitor
-from .room import Room
+from .room import Room, start_udp
 from .sim import LIVE_RECEIVER, Simulation
 
 STATIC = ROOT / "static"
@@ -80,6 +81,11 @@ async def startup():
     state["room"] = Room(state["live"].laptops, log=log)
     state["room"].loop = state["loop"]
     state["live"].suppress = state["room"].controls_tag
+    # UDP listener for the other laptops' reporters (they send their own filtered RSSI).
+    state["udp"], bound = await start_udp(state["room"], CONFIG.get("host", "127.0.0.1"),
+                                          CONFIG.get("udp_port", 8765), log=log)
+    if bound:
+        print(f"Room UDP listener on {CONFIG.get('host', '127.0.0.1')}:{bound}", flush=True)
     p = state["live"].laptops.profile()
     print(f"This laptop: {p['name']} ({'calibrated' if p['calibrated'] else 'NOT calibrated - using Alex numbers'})", flush=True)
     if CONFIG["mode"] == "real":
@@ -88,6 +94,14 @@ async def startup():
     asyncio.create_task(state["live"].run())
     asyncio.create_task(room_loop())
     threading.Thread(target=_build_checkpoints, daemon=True).start()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    t = state.get("udp")
+    if t is not None:
+        t.close()
+        state["udp"] = None
 
 
 def _build_checkpoints():

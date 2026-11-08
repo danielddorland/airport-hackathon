@@ -334,6 +334,9 @@ class _Live:
         self.kalman = RssiKalman()
         self.touch = TouchDetector()
         self.last_t = None
+        self.remote = None            # newest datagram from a reporter's own Kalman filter (filtered mode)
+        self.last_seq = None          # sequence number of the last accepted datagram
+        self.counts = deque()         # (t, packets) reported by datagrams
 
 
 class Room:
@@ -350,6 +353,7 @@ class Room:
         self.live = {}
         self.events = []
         self.sim = False
+        self.udp_stats = {"port": None, "datagrams": 0, "rejected": 0}
         self._sim_t0 = None
         self._sim_next = {}
         self.calib = {"phase": "idle", "progress": 0.0, "point": None, "message": "", "results": []}
@@ -428,6 +432,8 @@ class Room:
         for lv in self.live.values():
             lv.kalman.reset()
             lv.touch.reset()
+            lv.remote = None
+            lv.counts.clear()
         self.pos_kf = PositionKalman()
         self.raw_pos = None
         self.pos_sigma = None
@@ -500,6 +506,56 @@ class Room:
                 self._calib_buf.setdefault(aid, []).append(rssi)
             return True
 
+    def ingest_filtered(self, laptop, rssi_filtered, variance, raw_median, packets, t_age_ms, seq, now=None):
+        """One UDP datagram from a reporter that already ran its own Kalman filter.
+
+        Keeps the newest filtered value per laptop. Returns True if accepted, False if ignored
+        (simulator on, or an old/duplicate datagram). Raises ValueError on bad input."""
+        def num(v, lo, hi, name, allow_none=True):
+            if v is None and allow_none:
+                return None
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not (lo <= v <= hi):
+                raise ValueError(f"{name} must be a number between {lo} and {hi}")
+            return float(v)
+
+        rssi_filtered = num(rssi_filtered, -127, 0, "rssi_filtered")
+        variance = num(variance, 0, 1e4, "variance")
+        raw_median = num(raw_median, -127, 0, "raw_median")
+        packets = num(packets, 0, 1000, "packets", allow_none=False)
+        t_age_ms = num(t_age_ms, 0, 60000, "t_age_ms")
+        seq = num(seq, 0, 2 ** 53, "seq", allow_none=False)
+        packets, seq = int(packets), int(seq)
+        aid = slug(laptop)
+        if not aid:
+            raise ValueError("laptop name is empty")
+        now = self.clock() if now is None else float(now)
+        with self.lock:
+            if self.sim:
+                return False
+            self._ensure_laptop(aid)
+            lv = self.live[aid]
+            if lv.last_seq is not None and seq <= lv.last_seq and not (seq < lv.last_seq - 1000 or seq == 0):
+                return False                      # old or duplicate datagram (UDP can reorder)
+            if lv.last_seq is not None and seq <= lv.last_seq:
+                lv.counts.clear()                 # the reporter restarted
+                lv.kalman.reset()
+            lv.last_seq = seq
+            heard_at = None if t_age_ms is None else now - t_age_ms / 1000.0
+            if heard_at is not None:
+                lv.last_t = heard_at if lv.last_t is None else max(lv.last_t, heard_at)
+            lv.remote = {"rssi": rssi_filtered, "var": variance, "t": heard_at, "seq": seq}
+            if packets > 0:
+                lv.counts.append((now, packets))
+                if raw_median is not None and heard_at is not None:
+                    lv.packets.append((heard_at, raw_median))
+                    if self._calib_buf is not None and self._calib_start <= heard_at <= self._calib_end:
+                        self._calib_buf.setdefault(aid, []).append(raw_median)
+            while lv.counts and lv.counts[0][0] < now - KEEP_S:
+                lv.counts.popleft()
+            while lv.packets and lv.packets[0][0] < now - KEEP_S:
+                lv.packets.popleft()
+            return True
+
     def ingest_batch(self, laptop, packets, now=None):
         """Packets from a reporter laptop: [{"age_ms", "rssi"}]. Time = now - age (no clock skew)."""
         now = self.clock() if now is None else now
@@ -555,11 +611,16 @@ class Room:
                 recent3 = [r for t, r in lv.packets if now - ONLINE_S <= t <= now + 0.5]
                 recent1 = [r for t, r in lv.packets if now - 1.0 <= t <= now + 0.5]
                 d["packets_s"] = len(recent3) / ONLINE_S
+                if lv.remote is not None:       # filtered mode: packet counts come from the datagrams
+                    d["packets_s"] = sum(n for t, n in lv.counts if now - ONLINE_S <= t <= now + 0.5) / ONLINE_S
                 d["raw"] = statistics.median(recent1) if recent1 else None
                 d["online"] = lv.last_t is not None and now - lv.last_t <= ONLINE_S
-                if d["online"] and lv.kalman.x is not None:
-                    d["rssi"] = lv.kalman.x
-                    d["distance_m"] = rssi_to_distance(lv.kalman.x, p["rssi_1m"], p["n"], a["offset_db"])
+                rssi = lv.kalman.x
+                if lv.remote is not None:
+                    rssi = lv.remote["rssi"]
+                if d["online"] and rssi is not None:
+                    d["rssi"] = rssi
+                    d["distance_m"] = rssi_to_distance(rssi, p["rssi_1m"], p["n"], a["offset_db"])
                 ev = lv.touch.step(d["rssi"], self.touch_dbm(aid))
                 if ev == "start":
                     self._on_touch(aid, now)
@@ -873,6 +934,8 @@ class Room:
                 lv.packets.clear()
                 lv.kalman.reset()
                 lv.last_t = None
+                lv.remote = None
+                lv.counts.clear()
             self._reset_runtime()
             if on:
                 self._sim_t0 = now
@@ -980,7 +1043,73 @@ class Room:
                 "calibration": json.loads(json.dumps(self.calib)),
                 "weights": dict(self.weights),
                 "events": list(self.events),
+                "udp": dict(self.udp_stats),
             }
+
+
+UDP_PORT = 8765
+UDP_MAX_BYTES = 2048
+
+
+def parse_datagram(data):
+    """Bytes from a reporter -> kwargs for Room.ingest_filtered (without `now`). Raises ValueError."""
+    if not isinstance(data, (bytes, bytearray)) or len(data) > UDP_MAX_BYTES:
+        raise ValueError("datagram too large")
+    try:
+        msg = json.loads(bytes(data).decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        raise ValueError("not valid JSON")
+    if not isinstance(msg, dict) or msg.get("v") != 1 or isinstance(msg.get("v"), bool):
+        raise ValueError("unsupported datagram version")
+    laptop = msg.get("laptop")
+    if not isinstance(laptop, str) or not laptop.strip() or len(laptop) > 40:
+        raise ValueError("bad laptop name")
+    out = {"laptop": laptop}
+    for key in ("rssi_filtered", "variance", "raw_median", "packets", "t_age_ms", "seq"):
+        if key not in msg:
+            raise ValueError(f"missing {key}")
+        out[key] = msg[key]
+    # range checks happen in ingest_filtered; do them here too so bad datagrams are rejected early
+    for key, lo, hi in (("rssi_filtered", -127, 0), ("variance", 0, 1e4), ("raw_median", -127, 0),
+                        ("packets", 0, 1000), ("t_age_ms", 0, 60000), ("seq", 0, 2 ** 53)):
+        v = out[key]
+        if v is None and key not in ("packets", "seq"):
+            continue
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not (lo <= v <= hi):
+            raise ValueError(f"{key} out of range")
+    return out
+
+
+class RoomUdpProtocol(asyncio.DatagramProtocol):
+    """Receives the reporters' datagrams and feeds the room. Never raises."""
+
+    def __init__(self, room):
+        self.room = room
+
+    def datagram_received(self, data, addr):
+        stats = self.room.udp_stats
+        stats["datagrams"] += 1
+        try:
+            self.room.ingest_filtered(**parse_datagram(data))
+        except Exception:       # ValueError for bad data; anything else must not kill the listener
+            stats["rejected"] += 1
+
+    def error_received(self, exc):
+        pass
+
+
+async def start_udp(room, host="127.0.0.1", port=UDP_PORT, log=print):
+    """Start the UDP listener. Returns (transport, bound_port) or (None, None) if the port is busy."""
+    loop = asyncio.get_running_loop()
+    try:
+        transport, _ = await loop.create_datagram_endpoint(lambda: RoomUdpProtocol(room), local_addr=(host, port))
+    except OSError as e:
+        log(f"[room] WARNING: could not listen for UDP on {host}:{port} ({e}). "
+            "Reporters with --transport http still work.")
+        return None, None
+    bound = transport.get_extra_info("sockname")[1]
+    room.udp_stats["port"] = bound
+    return transport, bound
 
 
 def _loader(label):

@@ -47,9 +47,9 @@ If that works, the backup demo is ready.
 
 ## 3. Real demo with 3–4 laptops
 
-All laptops on the **same Wi-Fi or one phone hotspot**. Laptops in a **2 m square**, lids facing in.
-Default roles: Alex (0,0) = correct loader "Loader 5 – AC 1234", Joseph (2,0) = WRONG loader "Loader 4 – AC 857",
-Daniel (2,2) and the 4th laptop (0,2) = corners. Drag laptops on the map to change positions; change roles in the laptops table.
+All laptops on the **same Wi-Fi or one phone hotspot**. Laptops in a **3 m x 3 m square**, lids facing in (zone range 4.0 m).
+Default roles: Alex (0,0) = correct loader "Loader 5 – AC 1234", Joseph (3,0) = WRONG loader "Loader 4 – AC 857",
+Daniel (3,3) and Prem (0,3) = corners. Drag laptops on the map to change positions; change roles in the laptops table.
 
 **Main laptop** (runs the server and is the only one that beeps the tag):
 ```powershell

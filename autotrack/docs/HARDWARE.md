@@ -250,16 +250,16 @@ only obeys commands signed with its own key.
 Same single tag, but now **every laptop is a receiver**. Together they estimate
 where the tag is in the square and which laptop it is touching.
 
-### Layout (top view, 2 m square)
+### Layout (top view, 3 m x 3 m square)
 
 ```
-   Prem (0,2) ----------------- Daniel (2,2)
+   Prem (0,3) ----------------- Daniel (3,3)
    "Corner D"                   "Corner C"
        |                             |
        |          tag starts         |
-       |           here (1,1)        |
+       |        here (1.5,1.5)       |
        |                             |
-   Alex (0,0) ----------------- Joseph (2,0)
+   Alex (0,0) ----------------- Joseph (3,0)
    MAIN laptop, runs the server  "Loader 4 - AC 857"
    "Loader 5 - AC 1234"          = WRONG checkpoint
    = CORRECT checkpoint
@@ -268,9 +268,9 @@ where the tag is in the square and which laptop it is touching.
 | Laptop | Position | Role | What it runs |
 |---|---|---|---|
 | **Alex** | (0, 0) | correct checkpoint: Loader 5, serves AC 1234 | `run.py --mode real --laptop alex --host 0.0.0.0` (server + Bluetooth) |
-| **Joseph** | (2, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
-| **Daniel** | (2, 2) | corner (helps locate the tag) | `tools\reporter.py ... --laptop daniel` |
-| **Prem** | (0, 2) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop prem` |
+| **Joseph** | (3, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
+| **Daniel** | (3, 3) | corner (helps locate the tag) | `tools\reporter.py ... --laptop daniel` |
+| **Prem** | (0, 3) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop prem` |
 
 The bag is booked on **AC 1234**. Touching it to Joseph's laptop = WRONG AIRCRAFT
 (tag flashes red and beeps). Moving it to Alex's laptop = CHECKED IN (beeping stops,

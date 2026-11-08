@@ -62,14 +62,18 @@ MAX_EVENTS = 50
 MODE_NORMAL, MODE_WRONG, MODE_OK, MODE_LOCATE = 0, 1, 2, 3
 ROLES = ("correct", "wrong", "corner")
 
+SQUARE_M = 3.0             # the laptops stand at the corners of a 3 m x 3 m square
 DEFAULT_ANCHORS = {
     "alex":   {"x": 0.0, "y": 0.0, "role": "correct", "label": "Loader 5 - AC 1234", "flight": "AC 1234", "order": 0},
-    "joseph": {"x": 2.0, "y": 0.0, "role": "wrong", "label": "Loader 4 - AC 857", "flight": "AC 857", "order": 1},
-    "daniel": {"x": 2.0, "y": 2.0, "role": "corner", "label": "Corner C", "flight": "", "order": 2},
-    "prem":   {"x": 0.0, "y": 2.0, "role": "corner", "label": "Corner D", "flight": "", "order": 3},
+    "joseph": {"x": SQUARE_M, "y": 0.0, "role": "wrong", "label": "Loader 4 - AC 857", "flight": "AC 857", "order": 1},
+    "daniel": {"x": SQUARE_M, "y": SQUARE_M, "role": "corner", "label": "Corner C", "flight": "", "order": 2},
+    "prem":   {"x": 0.0, "y": SQUARE_M, "role": "corner", "label": "Corner D", "flight": "", "order": 3},
 }
 DEFAULT_BAG = {"tag": "TAG-0001", "flight": "AC 1234", "booking": "DSX42K", "plate": "AC123456"}
-DEFAULT_ZONE = {"range_m": 2.5, "hold_s": 2.0}
+# Zone range for a 3 m square: anywhere INSIDE, the two laptops of the far edge are at most 3.35 m
+# away (tag at the middle of the opposite edge); 1.5 m OUTSIDE an edge they are 4.74 m away.
+# 4.0 m sits between the two with ~0.65 m of margin each way. (Rule of thumb: 1.33 x the side.)
+DEFAULT_ZONE = {"range_m": 4.0, "hold_s": 2.0}
 DEFAULT_WEIGHTS = {"closest3": 1.0, "others": 0.2}
 
 

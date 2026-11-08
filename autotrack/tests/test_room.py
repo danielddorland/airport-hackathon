@@ -57,9 +57,14 @@ class Clock:
 
 
 def new_room(name="room"):
+    """A room laid out as a 2 m square with a 2.5 m zone range (what most tests below were written for;
+    the real default is a 3 m square - see test_default_layout_is_3m_square)."""
     clock = Clock()
     path = TMP / f"{name}-{random.random():.6f}.json"
     room = Room(Laptops(active="alex", log=quiet), log=quiet, path=path, clock=clock, seed=3)
+    room.configure({"anchors": {k: {"x": x, "y": y} for k, (x, y) in
+                                zip(("alex", "joseph", "daniel", "prem"), SQUARE)},
+                    "zone": {"range_m": 2.5}})
     return room, clock
 
 
@@ -353,6 +358,26 @@ def test_tag_commands_sent_without_blocking():
     modes = [m for _, m in room.ble.sent]
     assert modes == [0, 1, 2], modes      # take over (normal), WRONG, OK; no 0 after OK (tag does that)
     assert room.tag_mode_sent == 2 and room.last_write["ok"]
+
+
+def test_default_layout_is_3m_square():
+    path = TMP / f"default-{random.random():.6f}.json"
+    room = Room(Laptops(active="alex", log=quiet), log=quiet, path=path, clock=Clock(), seed=3)
+    pos = {k: (a["x"], a["y"]) for k, a in room.anchors.items()}
+    assert pos == {"alex": (0, 0), "joseph": (3, 0), "daniel": (3, 3), "prem": (0, 3)}, pos
+    rng_m = room.zone["range_m"]
+    assert rng_m == 4.0
+    pairs = zone_pairs(room._around())
+    online = {k: True for k in pos}
+    dist_to = lambda x, y: {k: math.hypot(x - ax, y - ay) for k, (ax, ay) in pos.items()}
+    # every point inside the square (true distances): no neighbour pair is "both too far"
+    for i in range(31):
+        for j in range(31):
+            x, y = i * 0.1, j * 0.1
+            assert violating_pairs(pairs, dist_to(x, y), online, rng_m) == [], (x, y)
+    # 1.5 m outside the middle of any edge: some neighbour pair is too far
+    for x, y in ((1.5, -1.5), (4.5, 1.5), (1.5, 4.5), (-1.5, 1.5)):
+        assert violating_pairs(pairs, dist_to(x, y), online, rng_m), (x, y)
 
 
 def test_touching_a_corner_never_means_out_of_zone():

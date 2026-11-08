@@ -46,7 +46,7 @@ Press **Ctrl+C** in PowerShell to stop.
 
 ### Room demo (3-4 laptops)
 
-3-4 laptops stand in a 2 m square and together estimate where the one ESP32 tag is.
+3-4 laptops stand in a 3 m x 3 m square and together estimate where the one ESP32 tag is.
 Who stands where: `docs/HARDWARE.md` section 7. How it works: `docs/PRESENTING.md` section 7.
 
 1. **Same network.** All laptops on the same Wi-Fi, or all on one phone hotspot (no internet needed).

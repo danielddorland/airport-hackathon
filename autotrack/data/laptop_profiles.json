@@ -55,6 +55,46 @@
         }
       ],
       "note": "Fitted from 3 measurement(s)."
+    },
+    "joseph": {
+      "name": "Joseph",
+      "rssi_1m": -67.7,
+      "n": 2.16,
+      "threshold_m": 1.9,
+      "calibrated": true,
+      "points": [
+        {
+          "d": 0.3,
+          "rssi": -58.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 0.5,
+          "rssi": -59.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 1.0,
+          "rssi": -68.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 2.0,
+          "rssi": -74.0,
+          "samples": null,
+          "t": null
+        },
+        {
+          "d": 3.0,
+          "rssi": -78.5,
+          "samples": null,
+          "t": null
+        }
+      ],
+      "note": "Measured Nov 8 on Joseph's laptop (5 distances)."
     }
   }
 }

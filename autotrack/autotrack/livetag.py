@@ -21,6 +21,9 @@ TX_POWER_LEVEL), so: about -40 dBm = touching, -60 dBm = 1 m, below -65 dBm = mo
     Quick to alert, slow to clear: it only goes back to normal once the signal has been at least
     6 dB stronger than the threshold for 3 s in a row, so one lucky strong packet can't clear it.
   * If we hear nothing at all for 6 s, the tag is LOST (also counts as too far).
+  * When the Room demo (room.py) is on and 2+ laptops hear the tag, the room decides what the
+    tag shows, so this monitor keeps measuring but stops sending its own commands
+    (`suppress` returns True) - two systems must not fight over the beep.
 """
 
 import asyncio
@@ -43,8 +46,9 @@ MODE_NORMAL, MODE_ALERT, MODE_LOCATE = 0, 1, 3
 
 
 class LiveTagMonitor:
-    def __init__(self, ble=None, laptops=None, log=print):
+    def __init__(self, ble=None, laptops=None, log=print, suppress=None):
         self.ble = ble                    # RealBLE, or None in simulation mode
+        self.suppress = suppress          # optional function: True = don't send tag commands now
         self.laptops = laptops or Laptops(log=log)
         self.log = log
         self._measuring = None            # list collecting raw RSSI during a calibration measurement
@@ -171,6 +175,8 @@ class LiveTagMonitor:
     def _send(self, mode):
         if not self.ble:
             return
+        if self.suppress is not None and self.suppress():
+            return                        # the Room demo is in charge of the tag right now
 
         async def go():
             ok = await self.ble.set_alert(TAG, mode)

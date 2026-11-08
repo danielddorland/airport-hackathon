@@ -242,3 +242,67 @@ only obeys commands signed with its own key.
 - a battery inside aviation limits for checked bags: **lithium metal < 0.3 g**
   lithium content, or **Li-ion ≤ 2.7 Wh**;
 - tough enough for conveyor belts and baggage handling, and reusable for years.
+
+---
+
+## 7. Room demo: 3-4 laptops in a square
+
+Same single tag, but now **every laptop is a receiver**. Together they estimate
+where the tag is in the square and which laptop it is touching.
+
+### Layout (top view, 2 m square)
+
+```
+   Ocean (0,2) ---------------- Daniel (2,2)
+   "Corner D"                   "Corner C"
+       |                             |
+       |          tag starts         |
+       |           here (1,1)        |
+       |                             |
+   Alex (0,0) ----------------- Joseph (2,0)
+   MAIN laptop, runs the server  "Loader 4 - AC 857"
+   "Loader 5 - AC 1234"          = WRONG checkpoint
+   = CORRECT checkpoint
+```
+
+| Laptop | Position | Role | What it runs |
+|---|---|---|---|
+| **Alex** | (0, 0) | correct checkpoint: Loader 5, serves AC 1234 | `run.py --mode real --laptop alex --host 0.0.0.0` (server + Bluetooth) |
+| **Joseph** | (2, 0) | WRONG checkpoint: Loader 4, serves AC 857 | `tools\reporter.py --server http://<alex-ip>:8000 --laptop joseph` |
+| **Daniel** | (2, 2) | corner (helps locate the tag) | `tools\reporter.py ... --laptop daniel` |
+| **Ocean** | (0, 2) | corner (optional 4th laptop) | `tools\reporter.py ... --laptop ocean` |
+
+The bag is booked on **AC 1234**. Touching it to Joseph's laptop = WRONG AIRCRAFT
+(tag flashes red and beeps). Moving it to Alex's laptop = CHECKED IN (beeping stops,
+green blink). Carrying it out of the square = OUT OF ZONE (beeps until it's back).
+
+Positions and roles can be changed on the Room demo page; they are saved in `data/room.json`.
+With only 3 laptops leave Ocean out: the triangle Alex - Joseph - Daniel still works.
+
+### Physical setup checklist
+
+- **Measure the square**: 2 m between neighbouring laptops (tape on the floor or table corners).
+  The distance is what the maths uses, so measure it, don't guess.
+- **Same height**: put the laptops at about the height the tag is carried (all on tables,
+  or all on the floor). Big height differences add error.
+- **Lids facing in**: open each lid and turn the laptop so the screen faces the centre of the
+  square. The Bluetooth antenna is usually in the lid, and it hears best through the front.
+- **Nothing in between**: no bags, metal or people standing between the tag and the laptops
+  while calibrating. Human bodies block 2.4 GHz noticeably (about 5-10 dB).
+- **Plugged in, no sleep** (see Troubleshooting above) and Bluetooth **on** for every laptop.
+- **Same network**: one Wi-Fi or one phone hotspot for everyone. On the main laptop allow
+  Python through **Windows Firewall** on private networks when it asks.
+- **Tag**: the ESP32 on the bag, powered from a power bank, antenna side not covered by your hand.
+
+### Order of steps on the day
+
+1. Each laptop calibrated on its own (Live ESP32 page > Measure at 0.3 m, 1 m, 3 m). Joseph's is already
+   in `data/laptop_profiles.json`.
+2. Start the main laptop, then the reporters. Each reporter should print `server ok` and about
+   20-40 packets per 2 s.
+3. On the Room demo page every laptop shows **online**.
+4. Hold the tag still at the centre (1, 1) and press **Calibrate room** (8 s). This measures each
+   laptop's noise and a small correction for "this laptop in this room".
+5. Hold the tag against each loader laptop once and press its **touch** button, so "touching" is
+   detected from that laptop's real signal.
+6. Run the story. Fallback at any time: turn on the simulation on the Room demo page.

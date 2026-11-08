@@ -29,6 +29,7 @@
 <nav>
   <button data-tab="ops" class="on">Ops dashboard</button>
   <button data-tab="live">Live ESP32</button>
+  <button data-tab="room">Room demo</button>
   <button data-tab="loader">Loader handheld</button>
   <button data-tab="passenger">Passenger view</button>
   <button data-tab="feed">Message feed</button>
@@ -86,6 +87,119 @@
       <div id="ltevents" class="note"></div>
     </div>
   </section>
+  <!-- ======================= ROOM DEMO ======================= -->
+  <!-- 3-4 laptops stand at the corners of a square and all listen to the one ESP32 tag.
+       The server (autotrack/room.py) turns each laptop's signal into a rough distance,
+       combines them into an approximate position and decides the bag status. -->
+  <section class="tab" id="tab-room">
+    <div class="room-banner room-st-off" id="roombanner">
+      <div class="room-banner-main">
+        <span class="room-kicker">Bag status</span>
+        <h2 id="roomstatus">Connecting...</h2>
+        <div class="room-reason" id="roomreason"></div>
+      </div>
+      <div class="room-banner-side">
+        <div class="mono" id="roombag"></div>
+        <div class="row room-badges" id="roombadges"></div>
+      </div>
+    </div>
+
+    <div class="room-grid">
+      <div class="side">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h3>Room map <span class="muted" id="roommapsum"></span></h3>
+            <div class="row room-modes" id="roommodes">
+              <button class="small on" data-room-mode="view">View</button>
+              <button class="small" data-room-mode="pick">Pick calibration spot</button>
+              <button class="small" data-room-mode="move">Move laptops</button>
+            </div>
+          </div>
+          <p class="note" id="roommodehelp" style="margin:0 0 8px"></p>
+          <svg id="roommap" viewBox="0 0 900 600" role="img" aria-label="Room map: laptops, zone square and the estimated tag position"></svg>
+          <div class="row" id="roompos" style="margin-top:10px;font-weight:700"></div>
+          <div class="row note room-legend">
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#1F9D55" stroke="#1C1D20" stroke-width="2"/></svg> correct checkpoint</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#E3141B" stroke="#1C1D20" stroke-width="2"/></svg> wrong checkpoint</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#2B2D32" stroke="#1C1D20" stroke-width="2"/></svg> corner</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#fff" stroke="#2B2D32" stroke-width="2"/></svg> offline (hollow)</span>
+            <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#2563EB" stroke="#1C1D20" stroke-width="2"/></svg> tag (smoothed)</span>
+            <span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#1C1D20" stroke-width="2"/></svg> raw fix</span>
+            <span><svg width="22" height="14"><line x1="1" y1="7" x2="21" y2="7" stroke="#1C1D20" stroke-width="2" stroke-dasharray="4 3"/></svg> distance circles (thick = 3 closest)</span>
+          </div>
+          <p class="note" style="margin-top:8px"><b>Position is approximate (Bluetooth signal strength, no UWB): expect ~0.5-1.5 m error.</b>
+            Each laptop turns the signal into a distance with RSSI = A &minus; 10&middot;n&middot;log10(d). The 3 closest laptops count most,
+            then a smoothing filter (Kalman) steadies the dot.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:4px">Laptops <span class="muted" id="roomnlap"></span></h3>
+          <p class="note" style="margin:0 0 8px">Other laptops join by running <span class="mono">python tools/reporter.py --server http://&lt;this-ip&gt;:8000 --laptop &lt;name&gt;</span>.
+            <b>Set touch:</b> hold the tag against that laptop, then press its button (uses the last 2 s).</p>
+          <div class="room-tablewrap" id="roomtable"></div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h3>Calibrate room (noise floor)</h3>
+          <p class="note" style="margin:6px 0">Hold the tag <b>still</b> at the crosshair (pick a spot on the map, or leave it to use the centre of the laptops) and press the button.
+            Every laptop records the signal. Because we know the real distance to the spot, the standard formula
+            RSSI = A &minus; 10&middot;n&middot;log10(d) tells us each laptop's true 1 m level (A), and the wobble of the signal is its noise floor.</p>
+          <div class="row">
+            <button class="primary room-big" id="roomcalbtn">Calibrate room (noise floor)</button>
+            <label>for <select id="roomcalsecs"><option value="5">5 s</option><option value="8" selected>8 s</option><option value="12">12 s</option></select></label>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <span class="note" id="roomspot"></span>
+            <button class="small" id="roompickbtn">Pick spot on map</button>
+            <button class="small" id="roomcentrebtn">Use centre</button>
+          </div>
+          <div class="bar room-progress"><i id="roomcalbar" style="width:0%"></i></div>
+          <div class="note" id="roomcalmsg"></div>
+          <div class="room-tablewrap" id="roomcalres" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Demo controls</h3>
+          <div class="row" style="margin-top:10px">
+            <button id="roomsimbtn">Simulate (no hardware)</button>
+            <button id="roomresetbtn">Reset demo</button>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="primary" id="roombeepbtn">Test beep</button>
+            <button id="roomstopbtn">Stop</button>
+            <button id="roommutebtn">Mute sound</button>
+          </div>
+          <div class="note" id="roomtaginfo" style="margin-top:10px"></div>
+          <div class="note" id="roommsg" style="margin-top:4px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Settings</h3>
+          <div class="room-form">
+            <label class="room-check"><input type="checkbox" id="roomenabled"> Room demo on</label>
+            <span></span>
+            <label>Zone range (m) <input type="number" id="roomrange" step="0.1" min="0.3" max="15"></label>
+            <label>Hold before alarm (s) <input type="number" id="roomhold" step="0.5" min="0" max="30"></label>
+            <label>Weight: 3 closest <input type="number" id="roomw3" step="0.1" min="0" max="5"></label>
+            <label>Weight: others <input type="number" id="roomwo" step="0.05" min="0" max="5"></label>
+            <label>Bag flight <input id="roombflight" placeholder="AC 1234"></label>
+            <label>Booking ref <input id="roombbook" placeholder="DSX42K"></label>
+            <label>Bag tag number <input id="roombplate" placeholder="AC123456"></label>
+          </div>
+          <p class="note" style="margin-top:10px"><b>Out of zone</b> = two laptops next to each other both think the tag is further than the zone range, for longer than the hold time.
+            <b>Weights</b>: how much the 3 closest laptops count compared with the others when working out the position.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:8px">Timeline</h3>
+          <div class="scroll" id="roomevents" style="max-height:320px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ======================= OPS ======================= -->
   <section class="tab on" id="tab-ops">
     <div class="ops">
@@ -235,7 +349,9 @@ async function init() {
   $("ltthrm").onchange = (e) => post("/api/laptops/threshold", { meters: +e.target.value });
   $("ltlaptop").onchange = (e) => post("/api/laptops/select", { id: e.target.value });
   if (L.mode === "real") document.querySelector('nav button[data-tab="live"]').click();
-  loop(); feedLoop(); liveLoop();
+  if (location.hash === "#room") document.querySelector('nav button[data-tab="room"]').click();  // open /#room straight on the room demo
+  roomSetup();
+  loop(); feedLoop(); liveLoop(); roomLoop();
 }
 
 // ---------------------------------------------------------------- the baggage-hall map
@@ -778,6 +894,428 @@ async function feedLoop() {
     }
   } catch (e) { console.warn(e); }
   setTimeout(feedLoop, 1000);
+}
+
+// ---------------------------------------------------------------- room demo (3-4 laptops in a square)
+// One ESP32 tag, several laptops at the corners of a square. Each laptop turns the tag's signal
+// strength into a rough distance; the server (autotrack/room.py) combines them into an approximate
+// position, decides the bag status and tells the tag to beep. This tab only draws GET /api/room
+// (every 300 ms while the tab is open) and sends button presses back to /api/room/...
+const ROOM_POLL_MS = 300;
+const ROOM_TITLE = document.title;
+const ROOM_ROLE_COL = { correct: "#1F9D55", wrong: "#E3141B", corner: "#2B2D32" };
+const ROOM_EV = { wrong: ["Wrong aircraft", "#E3141B"], checkin: ["Checked in", "#16803F"], zone_out: ["Out of zone", "#A50E13"],
+                  zone_in: ["Back in zone", "#1F9D55"], calib: ["Calibration", "#2563EB"], info: ["Info", "#5E626B"] };
+const ROOM_TAG_MODES = { 0: "normal", 1: "WRONG AIRCRAFT (red + beep)", 2: "OK (green + chirp)", 3: "locate (beep)" };
+const ROOM_HELP = {
+  view: "Live view. Dashed circles show how far each laptop thinks the tag is (thick = one of the 3 closest, which count most).",
+  pick: "Click the map where you will hold the tag still for \"Calibrate room\". The purple crosshair marks the spot.",
+  move: "Drag each laptop to where it really stands (snaps to 5 cm). Measure the square with a tape for the best result.",
+};
+let R = null;              // last /api/room answer (null = none yet, or the server isn't running the room demo)
+let roomErr = null;        // why the last poll failed
+let roomMapMode = "view";  // "view" | "pick" | "move"
+let roomPick = null;       // calibration spot picked on the map {x, y}; null = centre of the online laptops
+let roomDrag = null;       // laptop being dragged {id, x, y, ox, oy, pointerId, moved}
+let roomDrop = null;       // laptop just dropped {id, x, y}: drawn there until the server confirms
+let roomView = null;       // map scale: metres -> SVG units {x0, x1, y0, y1, s, W, H}
+let roomBoxCache = null;   // the map area only grows while the laptops stay put (stops the map jumping)
+let roomMuted = false, roomAlertOn = false, roomAudio = null, roomFlip = false;
+
+const roomF = (v, d = 1) => (v == null || !isFinite(v)) ? "--" : (+v).toFixed(d);
+const roomSigned = (v, d = 1) => (v == null || !isFinite(v)) ? "--" : (v >= 0 ? "+" : "") + (+v).toFixed(d);
+const roomSnap = (v) => Math.round(v / 0.05) * 0.05;
+function roomClock(t) { const d = new Date(t * 1000); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, "0")).join(":"); }
+function roomSay(text, bad) { $("roommsg").textContent = text || ""; $("roommsg").style.color = bad ? "var(--red)" : ""; }
+
+// Ask the server every 300 ms, but only while the Room demo tab is open.
+async function roomLoop() {
+  if (document.querySelector("#tab-room.on")) {
+    try { R = await get("/api/room"); roomErr = null; }
+    catch (e) { R = null; roomErr = String((e && e.message) || e); }
+    roomRender();
+  } else roomAlertOn = false;
+  setTimeout(roomLoop, ROOM_POLL_MS);
+}
+
+// POST to a room endpoint. Endpoints that answer with the room state redraw the page straight away.
+async function roomPost(url, body) {
+  let r;
+  try { r = await post(url, body || {}); }
+  catch (e) { roomSay("Could not reach the server (" + ((e && e.message) || e) + ")", true); return null; }
+  if (r && Array.isArray(r.anchors)) { R = r; roomErr = null; roomRender(); }
+  if (r && (r.error || r.detail)) roomSay(typeof r.detail === "string" ? r.detail : (r.error || JSON.stringify(r.detail)), true);
+  return r;
+}
+const roomConfig = (patch) => roomPost("/api/room/config", patch);
+
+// Laptops sorted round the square; a laptop being dragged is drawn where the mouse is.
+function roomAnchors() {
+  const list = R && Array.isArray(R.anchors) ? R.anchors.slice() : [];
+  list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return list.map(a => {
+    const o = roomDrag && roomDrag.id === a.id ? roomDrag : roomDrop && roomDrop.id === a.id ? roomDrop : null;
+    return o ? { ...a, x: o.x, y: o.y } : a;
+  });
+}
+
+function roomRender() {
+  roomRenderBanner();
+  roomRenderMap();
+  roomRenderControls();
+  roomRenderTable();
+  roomRenderEvents();
+  roomAlertOn = !!(R && R.enabled !== false && R.alert);
+}
+
+// ---------- big status banner
+function roomRenderBanner() {
+  const box = $("roombanner");
+  if (!R) {
+    box.className = "room-banner room-st-off";
+    $("roomstatus").textContent = roomErr ? "Server not running room demo" : "Connecting...";
+    $("roomreason").textContent = roomErr ? "GET /api/room did not answer. Start the main laptop with: python run.py --mode real --laptop alex --host 0.0.0.0" : "";
+    $("roombag").textContent = ""; $("roombadges").innerHTML = "";
+    return;
+  }
+  const bag = R.bag || {}, st = bag.status || "NOT SEEN";
+  const cls = { "WRONG AIRCRAFT": "alert", "OUT OF ZONE": "alert", "CHECKED IN": "ok", "ON TRACK": "track", "NOT SEEN": "off" }[st] || "track";
+  box.className = "room-banner room-st-" + (R.enabled === false ? "off" : cls);
+  $("roomstatus").textContent = R.enabled === false ? "Room demo off" : st;
+  const cp = (R.anchors || []).find(a => a.id === bag.checkpoint);
+  $("roomreason").textContent = R.enabled === false ? "Turn it on in Settings below." : (bag.reason || "") + (cp ? ` (at ${cp.name || cp.id}: ${cp.label || ""})` : "");
+  $("roombag").textContent = `Bag ${bag.tag || "-"} · flight ${bag.flight || "-"} · booking ${bag.booking || "-"} · tag no. ${bag.plate || "-"}`;
+  const badge = (text, bg) => `<span class="badge" style="background:${bg}">${esc(text)}</span>`;
+  $("roombadges").innerHTML = (R.real ? badge("Real Bluetooth", "#E3141B") : badge("No Bluetooth here", "#5E626B"))
+    + (R.sim ? badge("Simulator on", "#7C3AED") : "")
+    + badge("Tag: " + (ROOM_TAG_MODES[R.tag_mode] || R.tag_mode || "-"), "#2B2D32");
+}
+
+// ---------- the map: metres on a 0.5 m grid, auto-scaled to the laptops + 1.5 m margin
+function roomComputeView(A) {
+  const pts = A.map(a => [a.x, a.y]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+  if (!pts.length) pts.push([0, 0], [2, 2]);
+  const key = pts.map(p => p.join(",")).join(";");
+  const ax0 = Math.min(...pts.map(p => p[0])), ax1 = Math.max(...pts.map(p => p[0]));
+  const ay0 = Math.min(...pts.map(p => p[1])), ay1 = Math.max(...pts.map(p => p[1]));
+  let bx0 = ax0, bx1 = ax1, by0 = ay0, by1 = ay1;
+  // also fit the tag / calibration spot, unless it is silly far away
+  for (const p of [R && R.position, R && R.raw_position, roomPick, R && R.calibration && R.calibration.point]) {
+    if (!p || !isFinite(p.x) || !isFinite(p.y)) continue;
+    if (p.x < ax0 - 6 || p.x > ax1 + 6 || p.y < ay0 - 6 || p.y > ay1 + 6) continue;
+    bx0 = Math.min(bx0, p.x); bx1 = Math.max(bx1, p.x); by0 = Math.min(by0, p.y); by1 = Math.max(by1, p.y);
+  }
+  let x0 = Math.floor((bx0 - 1.5) / 0.5) * 0.5, x1 = Math.ceil((bx1 + 1.5) / 0.5) * 0.5;
+  let y0 = Math.floor((by0 - 1.5) / 0.5) * 0.5, y1 = Math.ceil((by1 + 1.5) / 0.5) * 0.5;
+  const c = roomBoxCache;
+  if (c && c.key === key) { x0 = Math.min(x0, c.x0); x1 = Math.max(x1, c.x1); y0 = Math.min(y0, c.y0); y1 = Math.max(y1, c.y1); }
+  roomBoxCache = { key, x0, x1, y0, y1 };
+  const s = Math.min(900 / (x1 - x0), 620 / (y1 - y0));
+  return { x0, x1, y0, y1, s, W: (x1 - x0) * s, H: (y1 - y0) * s };
+}
+
+function roomRenderMap() {
+  const svg = $("roommap");
+  svg.classList.toggle("room-pick", roomMapMode === "pick");
+  svg.classList.toggle("room-move", roomMapMode === "move");
+  $("roommodehelp").textContent = ROOM_HELP[roomMapMode];
+  const A = roomAnchors();
+  if (!roomDrag || !roomView) roomView = roomComputeView(A);   // keep the scale still while dragging
+  const V = roomView, X = (x) => ((x - V.x0) * V.s).toFixed(1), Y = (y) => ((y - V.y0) * V.s).toFixed(1);
+  svg.setAttribute("viewBox", `0 0 ${V.W.toFixed(1)} ${V.H.toFixed(1)}`);
+  const byId = Object.fromEntries(A.map(a => [a.id, a]));
+  let s = "";
+  // grid: thin line every 0.5 m, darker + labelled every 1 m
+  for (let i = 0; V.x0 + i * 0.5 <= V.x1 + 1e-6; i++) {
+    const x = V.x0 + i * 0.5, major = Math.abs(x - Math.round(x)) < 1e-6;
+    s += `<line class="room-gl${major ? " major" : ""}" x1="${X(x)}" y1="0" x2="${X(x)}" y2="${V.H.toFixed(1)}"/>`;
+    if (major && i > 0) s += `<text class="room-axis" x="${(+X(x) + 3).toFixed(1)}" y="13">${Math.round(x)} m</text>`;
+  }
+  for (let i = 0; V.y0 + i * 0.5 <= V.y1 + 1e-6; i++) {
+    const y = V.y0 + i * 0.5, major = Math.abs(y - Math.round(y)) < 1e-6;
+    s += `<line class="room-gl${major ? " major" : ""}" x1="0" y1="${Y(y)}" x2="${V.W.toFixed(1)}" y2="${Y(y)}"/>`;
+    if (major && i > 0) s += `<text class="room-axis" x="4" y="${(+Y(y) - 4).toFixed(1)}">${Math.round(y)} m</text>`;
+  }
+  if (!R) {
+    $("roommap").innerHTML = s + `<text class="room-empty" x="${(V.W / 2).toFixed(1)}" y="${(V.H / 2).toFixed(1)}">${roomErr ? "Server not running room demo" : "Connecting..."}</text>`;
+    $("roompos").textContent = ""; $("roommapsum").textContent = "";
+    return;
+  }
+  const zone = R.zone || {};
+  // the zone square (dashed): red when the server says the tag is outside
+  const square = !roomDrag && !roomDrop && Array.isArray(zone.square) && zone.square.length ? zone.square : A.map(a => [a.x, a.y]);
+  if (square.length >= 2) {
+    const zc = zone.inside === false ? " out" : zone.inside === true ? " in" : "";
+    s += `<polygon class="room-zone${zc}" points="${square.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
+  }
+  // the pair of neighbouring laptops that both say "too far" (the edge the tag left through)
+  if (Array.isArray(zone.violating) && zone.violating.length === 2) {
+    const a = byId[zone.violating[0]], b = byId[zone.violating[1]];
+    if (a && b) s += `<line class="room-viol" x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}"/>`;
+  }
+  // distance circle per online laptop
+  for (const a of A) {
+    if (!a.online || a.distance_m == null || !isFinite(a.distance_m)) continue;
+    s += `<circle class="room-range${a.closest3 ? " top" : ""}" cx="${X(a.x)}" cy="${Y(a.y)}" r="${(Math.min(a.distance_m, 15) * V.s).toFixed(1)}" stroke="${ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner}"/>`;
+  }
+  // tag: trail, uncertainty circle, smoothed dot, raw fix
+  const tr = Array.isArray(R.trail) ? R.trail.filter(p => p && isFinite(p[0]) && isFinite(p[1])) : [];
+  if (tr.length > 1) s += `<polyline class="room-trail" points="${tr.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
+  const P = R.position, RP = R.raw_position;
+  if (RP && isFinite(RP.x)) s += `<circle class="room-raw" cx="${X(RP.x)}" cy="${Y(RP.y)}" r="6"><title>raw fix (least squares)</title></circle>`;
+  if (P && isFinite(P.x)) {
+    if (R.pos_sigma_m != null) s += `<circle class="room-sigma" cx="${X(P.x)}" cy="${Y(P.y)}" r="${(R.pos_sigma_m * V.s).toFixed(1)}"/>`;
+    s += `<circle class="room-pos" cx="${X(P.x)}" cy="${Y(P.y)}" r="10"><title>tag (smoothed)</title></circle>
+          <text class="room-sub" x="${X(P.x)}" y="${(+Y(P.y) - 16).toFixed(1)}">${esc((R.bag && R.bag.tag) || "TAG")}</text>`;
+  }
+  // calibration crosshair: while calibrating, or the spot picked on the map
+  const cal = R.calibration || {};
+  const cp = (cal.phase === "running" && cal.point) || roomPick;
+  if (cp && isFinite(cp.x)) {
+    const cx = +X(cp.x), cy = +Y(cp.y);
+    s += `<g class="room-cross"><circle cx="${cx}" cy="${cy}" r="14"/><line x1="${cx - 24}" y1="${cy}" x2="${cx + 24}" y2="${cy}"/>
+          <line x1="${cx}" y1="${cy - 24}" x2="${cx}" y2="${cy + 24}"/></g>
+          <text class="room-sub room-cross-text" x="${cx}" y="${cy + 38}">${cal.phase === "running" ? "hold tag still here" : "calibration spot"}</text>`;
+  }
+  // the laptops on top (hollow = offline, thick ring = tag touching it)
+  for (const a of A) {
+    const col = ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner, x = X(a.x), y = Y(a.y);
+    s += `<g class="room-anchor-g" data-anchor="${esc(a.id)}" transform="translate(${x},${y})">
+      <title>${esc(a.name || a.id)} - ${esc(a.label || a.role)}</title>
+      ${a.touching ? `<rect class="room-ring" x="-24" y="-24" width="48" height="48"/>` : ""}
+      <rect class="room-anchor-shadow" x="-12" y="-12" width="30" height="30"/>
+      <rect class="room-anchor" x="-15" y="-15" width="30" height="30" fill="${a.online ? col : "#fff"}" stroke="${a.online ? "#1C1D20" : col}"/>
+      <text class="room-name" y="-24">${esc(a.name || a.id)}</text>
+      <text class="room-sub" y="32">${esc(a.label || a.role)}</text>
+      <text class="room-sub" y="46">${a.online ? (a.distance_m != null ? "~" + roomF(a.distance_m, 2) + " m" : "online") : "offline"}</text>
+    </g>`;
+  }
+  if (!A.length) s += `<text class="room-empty" x="${(V.W / 2).toFixed(1)}" y="${(V.H / 2).toFixed(1)}">No laptops yet: start a reporter, or press Simulate</text>`;
+  svg.innerHTML = s;
+  // the line under the map
+  const online = A.filter(a => a.online).length;
+  $("roommapsum").textContent = `(${online}/${A.length} laptops online)`;
+  if (P && isFinite(P.x)) {
+    const v = R.velocity, sp = v ? Math.hypot(v.vx, v.vy) : null;
+    $("roompos").textContent = `Tag at about x ${roomF(P.x, 2)} m, y ${roomF(P.y, 2)} m` + (R.pos_sigma_m != null ? ` (± ${roomF(R.pos_sigma_m, 1)} m)` : "")
+      + (sp != null ? ` · moving ${roomF(sp, 2)} m/s` : "") + (zone.inside === false ? " · OUTSIDE the zone" : zone.inside === true ? " · inside the zone" : "");
+  } else $("roompos").textContent = `No position yet: needs at least 3 laptops online (${online} now).`;
+}
+
+// Mouse / finger on the map: pick the calibration spot, or drag laptops.
+function roomMetres(e) {
+  const svg = $("roommap"), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: roomView.x0 + q.x / roomView.s, y: roomView.y0 + q.y / roomView.s };
+}
+function roomSetupMap() {
+  const svg = $("roommap");
+  svg.addEventListener("pointerdown", (e) => {
+    if (!R || !roomView) return;
+    const p = roomMetres(e);
+    if (roomMapMode === "pick") { roomPick = { x: roomSnap(p.x), y: roomSnap(p.y) }; roomRender(); return; }
+    if (roomMapMode !== "move") return;
+    const g = e.target.closest && e.target.closest("[data-anchor]");
+    const a = g && roomAnchors().find(x => x.id === g.dataset.anchor);
+    if (!a) return;
+    roomDrag = { id: a.id, x: a.x, y: a.y, ox: a.x - p.x, oy: a.y - p.y, pointerId: e.pointerId, moved: false };
+    svg.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!roomDrag || e.pointerId !== roomDrag.pointerId) return;
+    const p = roomMetres(e);
+    roomDrag.x = roomSnap(p.x + roomDrag.ox); roomDrag.y = roomSnap(p.y + roomDrag.oy); roomDrag.moved = true;
+    roomRenderMap();
+  });
+  svg.addEventListener("pointerup", async (e) => {
+    if (!roomDrag || e.pointerId !== roomDrag.pointerId) return;
+    const d = roomDrag; roomDrag = null;
+    if (!d.moved) { roomRenderMap(); return; }
+    const x = +d.x.toFixed(2), y = +d.y.toFixed(2);
+    roomDrop = { id: d.id, x, y };
+    await roomConfig({ anchors: { [d.id]: { x, y } } });
+    roomDrop = null;
+    roomSay(`Moved ${d.id} to x ${x} m, y ${y} m.`);
+    roomRenderMap();
+  });
+  svg.addEventListener("pointercancel", () => { roomDrag = null; roomRenderMap(); });
+}
+function roomSetMode(m) {
+  roomMapMode = m;
+  document.querySelectorAll("#roommodes button").forEach(b => b.classList.toggle("on", b.dataset.roomMode === m));
+  roomRenderMap();
+}
+
+// ---------- calibration card, demo buttons, settings
+function roomRenderControls() {
+  const c = (R && R.calibration) || {}, running = c.phase === "running";
+  const btn = $("roomcalbtn");
+  btn.disabled = !R || running;
+  btn.textContent = running ? `Calibrating... ${Math.round((c.progress || 0) * 100)}% - keep the tag still` : "Calibrate room (noise floor)";
+  $("roomcalbar").style.width = Math.round(Math.max(0, Math.min(1, c.progress || 0)) * 100) + "%";
+  $("roomcalmsg").textContent = c.message || (R ? "Not calibrated yet in this session." : "");
+  $("roomcalmsg").style.color = c.phase === "error" ? "var(--red)" : "";
+  const sp = running && c.point ? c.point : roomPick;
+  $("roomspot").textContent = running && c.point ? `Holding at x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m`
+    : roomPick ? `Spot: x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m (picked on the map)` : "Spot: centre of the online laptops";
+  const res = Array.isArray(c.results) ? c.results : [];
+  const html = res.length ? `<table><tr><th>Laptop</th><th>Median</th><th>Noise &sigma;</th><th>Packets</th><th>Distance</th><th>1 m level</th><th>Offset</th></tr>`
+    + res.map(r => `<tr><td><b>${esc(r.id)}</b></td><td class="mono">${roomF(r.median)} dBm</td><td class="mono">${roomF(r.sigma_db)} dB</td>
+        <td class="mono">${r.packets ?? "--"}</td><td class="mono">${roomF(r.distance_m, 2)} m</td>
+        <td class="mono">${roomF(r.rssi_1m_profile)} &rarr; ${r.rssi_1m_profile != null && r.offset_db != null ? roomF(r.rssi_1m_profile + r.offset_db) : "--"} dBm</td>
+        <td class="mono">${roomSigned(r.offset_db)} dB</td></tr>`).join("") + `</table>` : "";
+  if ($("roomcalres").dataset.html !== html) { $("roomcalres").innerHTML = html; $("roomcalres").dataset.html = html; }
+  // demo buttons
+  $("roomsimbtn").textContent = R && R.sim ? "Stop simulator" : "Simulate (no hardware)";
+  $("roomsimbtn").classList.toggle("primary", !!(R && R.sim));
+  $("roommutebtn").textContent = roomMuted ? "Unmute sound" : "Mute sound";
+  if (R) {
+    const lw = R.last_write;
+    const lwText = lw && typeof lw === "object" ? Object.entries(lw).filter(([, v]) => v == null || typeof v !== "object").slice(0, 5)
+      .map(([k, v]) => `${k}: ${k === "t" && typeof v === "number" ? roomClock(v) : v}`).join(", ") : "";
+    $("roomtaginfo").textContent = `Tag should be: ${ROOM_TAG_MODES[R.tag_mode] || R.tag_mode} · last sent: ${R.tag_mode_sent == null ? "nothing yet" : (ROOM_TAG_MODES[R.tag_mode_sent] || R.tag_mode_sent)}`
+      + (lwText ? ` (${lwText})` : "") + (R.real ? "" : " · no Bluetooth on this server, so nothing reaches the real tag");
+  } else $("roomtaginfo").textContent = "";
+  // settings (never overwrite a box the user is typing in)
+  if (!R) return;
+  const setv = (id, v) => { const el = $(id); if (document.activeElement !== el && v != null) el.value = v; };
+  const z = R.zone || {}, w = R.weights || {}, bag = R.bag || {};
+  setv("roomrange", z.range_m); setv("roomhold", z.hold_s); setv("roomw3", w.closest3); setv("roomwo", w.others);
+  setv("roombflight", bag.flight); setv("roombbook", bag.booking); setv("roombplate", bag.plate);
+  if (document.activeElement !== $("roomenabled")) $("roomenabled").checked = !!R.enabled;
+}
+
+// ---------- laptops table
+function roomRenderTable() {
+  const box = $("roomtable"), fe = document.activeElement;
+  if (fe && box.contains(fe) && (fe.tagName === "INPUT" || fe.tagName === "SELECT")) return;   // don't redraw under the user's typing
+  const A = roomAnchors();
+  $("roomnlap").textContent = R ? `(${A.length})` : "";
+  let html;
+  if (!R) html = `<div class="note">Server not running room demo.</div>`;
+  else if (!A.length) html = `<div class="note">No laptops yet. Start tools/reporter.py on the other laptops, or press Simulate.</div>`;
+  else html = `<table><tr><th>Laptop</th><th>Role</th><th>Checkpoint / flight</th><th>Online</th><th>Pkts/s</th><th>RSSI</th><th>Raw</th>
+      <th>Noise &sigma;</th><th>Distance</th><th>Weight</th><th>Top 3</th><th>Touch</th><th>Touch level</th><th>Offset</th><th>Calibration</th><th></th></tr>`
+    + A.map(a => {
+      const id = esc(a.id), col = ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner;
+      const wpct = Math.round(Math.max(0, Math.min(1, a.weight || 0)) * 100);
+      return `<tr>
+        <td><b>${esc(a.name || a.id)}</b><br><span class="note mono">${id}</span></td>
+        <td><select data-room-role="${id}" style="border-color:${col}">${["correct", "wrong", "corner"].map(r => `<option value="${r}"${r === a.role ? " selected" : ""}>${r}</option>`).join("")}</select></td>
+        <td><input data-room-label="${id}" value="${esc(a.label)}" size="16" placeholder="label"><br>
+            <input data-room-flight="${id}" value="${esc(a.flight)}" size="8" placeholder="flight" style="margin-top:4px"></td>
+        <td style="white-space:nowrap"><span class="room-dot${a.online ? " on" : ""}"></span> ${a.online ? "online" : "offline"}</td>
+        <td class="mono">${roomF(a.packets_s)}</td>
+        <td class="mono">${roomF(a.rssi)}</td>
+        <td class="mono">${roomF(a.raw)}</td>
+        <td class="mono">${roomF(a.sigma_db)}</td>
+        <td class="mono" style="white-space:nowrap">${a.distance_m == null ? "--" : roomF(a.distance_m, 2) + " m"}</td>
+        <td><div class="bar room-wbar"><i style="width:${wpct}%;background:${a.closest3 ? "var(--red)" : "var(--graphite-2)"}"></i></div><span class="note mono">${roomF(a.weight, 2)}</span></td>
+        <td>${a.closest3 ? `<span class="badge" style="background:#2563EB">Top 3</span>` : ""}</td>
+        <td>${a.touching ? `<span class="badge" style="background:${col}">Touching</span>` : `<span class="note">-</span>`}</td>
+        <td class="mono" style="white-space:nowrap">${roomF(a.touch_dbm)} dBm<br><button class="small" data-room-touch="${id}" style="margin-top:4px">Set touch</button></td>
+        <td class="mono">${roomSigned(a.offset_db)} dB</td>
+        <td>${a.calibrated ? `<span class="badge" style="background:#16803F">Calibrated</span>` : `<span class="badge" style="background:#E3141B">Not calibrated</span>`}
+            <div class="note mono" style="white-space:nowrap">1 m = ${roomF(a.rssi_1m)} dBm, n = ${roomF(a.n, 2)}</div></td>
+        <td><button class="small" data-room-remove="${id}">Remove</button></td></tr>`;
+    }).join("") + `</table>`;
+  if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
+}
+function roomSetupTable() {
+  const box = $("roomtable");
+  box.addEventListener("change", (e) => {
+    const t = e.target, d = t.dataset;
+    if (d.roomRole) roomConfig({ anchors: { [d.roomRole]: { role: t.value } } });
+    else if (d.roomLabel) roomConfig({ anchors: { [d.roomLabel]: { label: t.value.trim() } } });
+    else if (d.roomFlight) roomConfig({ anchors: { [d.roomFlight]: { flight: t.value.trim() } } });
+    t.blur();
+  });
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.roomTouch) {
+      const id = b.dataset.roomTouch, r = await roomPost("/api/room/touch", { id });
+      if (r && !r.error && !r.detail) {
+        const a = (R && R.anchors || []).find(x => x.id === id);
+        roomSay(`Touch level for ${id} set` + (a ? ` to ${roomF(a.touch_dbm)} dBm.` : "."));
+      }
+    } else if (b.dataset.roomRemove) {
+      const id = b.dataset.roomRemove;
+      if (confirm(`Remove ${id} from the room? (It comes back if its reporter keeps sending.)`)) roomConfig({ anchors: { [id]: null } });
+    }
+  });
+}
+
+// ---------- timeline
+function roomRenderEvents() {
+  const ev = R && Array.isArray(R.events) ? R.events : [];
+  const html = ev.length ? ev.map(e => {
+    const [name, col] = ROOM_EV[e.kind] || ROOM_EV.info;
+    return `<div class="room-ev" style="border-left-color:${col}"><span class="mono note">${roomClock(e.t)}</span>
+      <b style="color:${col}">${name}</b> ${esc(e.text)}</div>`;
+  }).join("") : `<div class="note">${R ? "Nothing yet." : "Server not running room demo."}</div>`;
+  if ($("roomevents").dataset.html !== html) { $("roomevents").innerHTML = html; $("roomevents").dataset.html = html; }
+}
+
+// ---------- sound + flashing title while the bag is in alarm
+// Browsers only allow sound after the first click on the page, so the audio starts then.
+function roomBeepOnce() {
+  if (!roomAudio || roomAudio.state !== "running") return;
+  const t = roomAudio.currentTime, o = roomAudio.createOscillator(), g = roomAudio.createGain();
+  o.type = "square"; o.frequency.value = 1320;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  o.connect(g); g.connect(roomAudio.destination);
+  o.start(t); o.stop(t + 0.2);
+}
+document.addEventListener("pointerdown", () => {
+  try {
+    if (!roomAudio) roomAudio = new (window.AudioContext || window.webkitAudioContext)();
+    if (roomAudio.state === "suspended") roomAudio.resume();
+  } catch (e) { /* no sound on this browser: the screen still flashes */ }
+}, { capture: true });
+setInterval(() => {
+  const on = roomAlertOn && R && document.querySelector("#tab-room.on");
+  if (on) {
+    if (!roomMuted) roomBeepOnce();
+    roomFlip = !roomFlip;
+    document.title = roomFlip ? `!! ${(R.bag && R.bag.status) || "ALERT"} !!` : ROOM_TITLE;
+  } else if (document.title !== ROOM_TITLE) document.title = ROOM_TITLE;
+}, 700);
+
+// ---------- wire up the buttons (called once from init)
+function roomSetup() {
+  roomSetupMap();
+  roomSetupTable();
+  document.querySelectorAll("#roommodes button").forEach(b => b.onclick = () => roomSetMode(b.dataset.roomMode));
+  $("roompickbtn").onclick = () => roomSetMode("pick");
+  $("roomcentrebtn").onclick = () => { roomPick = null; roomRender(); };
+  $("roomcalbtn").onclick = () => {
+    const body = { seconds: +$("roomcalsecs").value || 8 };
+    if (roomPick) { body.x = roomPick.x; body.y = roomPick.y; }
+    roomSay("");
+    roomPost("/api/room/calibrate", body);
+  };
+  $("roomsimbtn").onclick = () => roomPost("/api/room/sim", { on: !(R && R.sim) });
+  $("roomresetbtn").onclick = async () => { const r = await roomPost("/api/room/reset", {}); if (r && !r.error && !r.detail) roomSay("Demo reset: bag status, events and filters cleared."); };
+  const roomBeepCmd = async (mode) => {
+    const r = await roomPost("/api/room/beep", { mode });
+    if (r && r.ok !== false && !r.error && !r.detail) roomSay(`Sent "${ROOM_TAG_MODES[mode]}" to the tag.`);
+    else if (r && r.ok === false && !r.error) roomSay("Tag did not accept the command (see the server window).", true);
+  };
+  $("roombeepbtn").onclick = () => roomBeepCmd(3);
+  $("roomstopbtn").onclick = () => roomBeepCmd(0);
+  $("roommutebtn").onclick = () => { roomMuted = !roomMuted; roomRenderControls(); };
+  const num = (id) => { const v = parseFloat($(id).value); return isFinite(v) ? v : undefined; };
+  $("roomenabled").onchange = (e) => roomConfig({ enabled: e.target.checked });
+  $("roomrange").onchange = $("roomhold").onchange = () => roomConfig({ zone: { range_m: num("roomrange"), hold_s: num("roomhold") } });
+  $("roomw3").onchange = $("roomwo").onchange = () => roomConfig({ weights: { closest3: num("roomw3"), others: num("roomwo") } });
+  $("roombflight").onchange = $("roombbook").onchange = $("roombplate").onchange = () =>
+    roomConfig({ bag: { flight: $("roombflight").value.trim(), booking: $("roombbook").value.trim(), plate: $("roombplate").value.trim() } });
+  roomRender();
 }
 init();
 </script>

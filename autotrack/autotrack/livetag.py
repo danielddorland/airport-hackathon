@@ -39,7 +39,10 @@ CONFIRM_CHECKS = 2          # checks (0.5 s apart) in a row before we raise an a
 CLEAR_CHECKS = 6            # checks in a row before we clear one (3 s): quick to alert, slow to clear
 LOST_AFTER_S = 6.0
 MISSING_DBM = -100.0        # value given to each packet we expected but didn't hear
-MISSING_BELOW = 0.25        # ...but only when we hear less than 25% of the normal close-range rate
+MISSING_BELOW = 0.0         # ...when we hear less than this share of the normal rate. OFF (0): on real
+                            # laptops Windows sometimes goes near-silent for seconds with the tag right
+                            # next to it, which this turned into false TOO FAR alarms. The slow clear
+                            # (6 dB for 3 s) and LOST (6 s of silence) already keep a far tag in alert.
 NEAR_MARGIN_DB = 10         # "close" (for learning the normal packet rate) = this much above the threshold
 RATE_LEARN = 0.1            # how fast the normal packet rate adapts
 

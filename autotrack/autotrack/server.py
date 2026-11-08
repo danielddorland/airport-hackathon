@@ -50,7 +50,7 @@ from fastapi.staticfiles import StaticFiles
 from .laptops import Laptops
 from .layout import ROOT
 from .livetag import LiveTagMonitor
-from .room import Room, start_udp
+from .room import TICK_S, Room, start_udp
 from .sim import LIVE_RECEIVER, Simulation
 
 STATIC = ROOT / "static"
@@ -140,13 +140,13 @@ async def start_real_ble():
 
 
 async def room_loop():
-    """Updates the Room demo (filters, position, alerts) every 0.2 s."""
+    """Updates the Room demo every TICK_S (0.5 s): per-laptop median -> distance -> trilateration."""
     while True:
         try:
             state["room"].tick()
         except Exception as e:  # never let the room die during a demo
             print(f"[room] error: {e!r}", flush=True)
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(TICK_S)
 
 
 async def clock_loop():

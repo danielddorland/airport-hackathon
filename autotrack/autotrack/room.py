@@ -4,7 +4,8 @@ room.py - the "Room demo": 3-4 laptops in a square find the one ESP32 tag togeth
 Every laptop hears the tag and reports the signal strength (RSSI) of each verified packet.
 The main laptop (the one running the server) combines them:
 
-  1. Smooth each laptop's RSSI with a small Kalman filter (one number per laptop).
+  1. Every 0.5 s, take each laptop's packets from the last 0.5 s (the tag sends one every
+     100 ms, so about 5) and use their MEDIAN as that laptop's signal strength.
   2. Turn it into a distance with the standard log-distance formula
          d = 10 ** ((A - RSSI) / (10 * n))
      where A = the laptop's 1 m signal (its calibration, laptops.py) + a room offset
@@ -21,7 +22,7 @@ Bluetooth signal strength is rough (bodies, hands and walls change it by 5-10 dB
 location is APPROXIMATE - good to about a metre, not centimetres (that would need UWB).
 
 Everything here is plain Python (no FastAPI, no Bluetooth), so it can be unit-tested.
-The server calls Room.ingest() for every packet and Room.tick() every 0.2 s.
+The server calls Room.ingest() for every packet and Room.tick() every 0.5 s.
 Settings and calibration are saved in data/room.json.
 """
 
@@ -39,7 +40,8 @@ from .layout import ROOT
 
 ROOM_FILE = ROOT / "data" / "room.json"
 
-TICK_S = 0.2
+TICK_S = 0.5               # position update rate (the page also refreshes every 0.5 s)
+WINDOW_S = 0.5             # each laptop's RSSI = median of its packets in the last 0.5 s (~5 at 100 ms)
 ONLINE_S = 3.0              # a laptop is "online" if it heard the tag in the last 3 s
 KEEP_S = 10.0               # how much raw packet history we keep per laptop
 D_MIN, D_MAX = 0.05, 15.0   # distances are clamped to this range (metres)
@@ -156,7 +158,8 @@ def wls_solve(anchors, dists, weights, iters=15):
 
 
 class RssiKalman:
-    """One-number Kalman filter for a laptop's RSSI (random walk: the true signal drifts slowly)."""
+    """One-number Kalman filter for a laptop's RSSI (random walk: the true signal drifts slowly).
+    (Not used by the room any more - it now takes the median of each 0.5 s window - kept as a tool.)"""
 
     def __init__(self, q=RSSI_Q):
         self.q = q
@@ -331,10 +334,10 @@ class _Live:
 
     def __init__(self):
         self.packets = deque()        # (t, rssi)
-        self.kalman = RssiKalman()
         self.touch = TouchDetector()
         self.last_t = None
-        self.remote = None            # newest datagram from a reporter's own Kalman filter (filtered mode)
+        self.median = None            # median RSSI of the newest 0.5 s window with packets (this laptop's signal)
+        self.remote = None            # newest datagram from a reporter (it sends its own 0.5 s median)
         self.last_seq = None          # sequence number of the last accepted datagram
         self.counts = deque()         # (t, packets) reported by datagrams
 
@@ -430,8 +433,8 @@ class Room:
     def _reset_runtime(self):
         """Clears bag latches, filters and alarms (keeps settings and calibration)."""
         for lv in self.live.values():
-            lv.kalman.reset()
             lv.touch.reset()
+            lv.median = None
             lv.remote = None
             lv.counts.clear()
         self.pos_kf = PositionKalman()
@@ -500,16 +503,17 @@ class Room:
             while lv.packets and lv.packets[0][0] < t - KEEP_S:
                 lv.packets.popleft()
             lv.last_t = t if lv.last_t is None else max(lv.last_t, t)
-            sig = self.anchors[aid]["sigma_db"]
-            lv.kalman.update(t, rssi, sig * sig)
             if self._calib_buf is not None and self._calib_start <= t <= self._calib_end:
                 self._calib_buf.setdefault(aid, []).append(rssi)
             return True
 
-    def ingest_filtered(self, laptop, rssi_filtered, variance, raw_median, packets, t_age_ms, seq, now=None):
-        """One UDP datagram from a reporter that already ran its own Kalman filter.
+    def ingest_filtered(self, laptop, rssi_filtered, variance, raw_median, packets, t_age_ms, seq, now=None,
+                        raw=None):
+        """One UDP datagram from a reporter: rssi_filtered = the median of its last 0.5 s of packets
+        (null if it heard nothing in that window: we then keep its previous value while it's online).
+        raw = optional list of that window's individual RSSIs (used for calibration / touch levels).
 
-        Keeps the newest filtered value per laptop. Returns True if accepted, False if ignored
+        Keeps the newest value per laptop. Returns True if accepted, False if ignored
         (simulator on, or an old/duplicate datagram). Raises ValueError on bad input."""
         def num(v, lo, hi, name, allow_none=True):
             if v is None and allow_none:
@@ -525,6 +529,10 @@ class Room:
         t_age_ms = num(t_age_ms, 0, 60000, "t_age_ms")
         seq = num(seq, 0, 2 ** 53, "seq", allow_none=False)
         packets, seq = int(packets), int(seq)
+        if raw is not None:
+            if not isinstance(raw, (list, tuple)) or len(raw) > 50:
+                raise ValueError("raw must be a list of at most 50 numbers")
+            raw = [num(r, -127, 0, "raw", allow_none=False) for r in raw]
         aid = slug(laptop)
         if not aid:
             raise ValueError("laptop name is empty")
@@ -538,18 +546,25 @@ class Room:
                 return False                      # old or duplicate datagram (UDP can reorder)
             if lv.last_seq is not None and seq <= lv.last_seq:
                 lv.counts.clear()                 # the reporter restarted
-                lv.kalman.reset()
+                lv.median = None
             lv.last_seq = seq
             heard_at = None if t_age_ms is None else now - t_age_ms / 1000.0
             if heard_at is not None:
                 lv.last_t = heard_at if lv.last_t is None else max(lv.last_t, heard_at)
+            if rssi_filtered is None and lv.remote is not None and packets == 0:
+                rssi_filtered = lv.remote["rssi"]    # nothing heard in this 0.5 s: hold the last median
             lv.remote = {"rssi": rssi_filtered, "var": variance, "t": heard_at, "seq": seq}
             if packets > 0:
                 lv.counts.append((now, packets))
-                if raw_median is not None and heard_at is not None:
-                    lv.packets.append((heard_at, raw_median))
-                    if self._calib_buf is not None and self._calib_start <= heard_at <= self._calib_end:
-                        self._calib_buf.setdefault(aid, []).append(raw_median)
+                if heard_at is not None:
+                    # the individual readings if sent (spread 100 ms apart, the newest at heard_at),
+                    # else just the window's median
+                    vals = raw if raw else ([raw_median] if raw_median is not None else [])
+                    for i, v in enumerate(vals):
+                        t = heard_at - (len(vals) - 1 - i) * 0.1
+                        lv.packets.append((t, v))
+                        if self._calib_buf is not None and self._calib_start <= t <= self._calib_end:
+                            self._calib_buf.setdefault(aid, []).append(v)
             while lv.counts and lv.counts[0][0] < now - KEEP_S:
                 lv.counts.popleft()
             while lv.packets and lv.packets[0][0] < now - KEEP_S:
@@ -607,17 +622,23 @@ class Room:
                  "closest3": False, "online": False}
             if lv is not None:
                 if lv.last_t is not None and now - lv.last_t > ONLINE_S:
-                    lv.kalman.reset()     # silent for >3 s: start fresh next time
+                    lv.median = None      # silent for >3 s: start fresh next time
                 recent3 = [r for t, r in lv.packets if now - ONLINE_S <= t <= now + 0.5]
                 recent1 = [r for t, r in lv.packets if now - 1.0 <= t <= now + 0.5]
                 d["packets_s"] = len(recent3) / ONLINE_S
-                if lv.remote is not None:       # filtered mode: packet counts come from the datagrams
+                if lv.remote is not None:       # reporter mode: packet counts come from the datagrams
                     d["packets_s"] = sum(n for t, n in lv.counts if now - ONLINE_S <= t <= now + 0.5) / ONLINE_S
                 d["raw"] = statistics.median(recent1) if recent1 else None
                 d["online"] = lv.last_t is not None and now - lv.last_t <= ONLINE_S
-                rssi = lv.kalman.x
                 if lv.remote is not None:
-                    rssi = lv.remote["rssi"]
+                    rssi = lv.remote["rssi"]    # the reporter's own median of its last 0.5 s
+                else:
+                    # This laptop's packets from the last WINDOW_S (~5 at 100 ms): their median.
+                    # Nothing new in the window (a missed packet or two)? Keep the last median.
+                    win = [r for t, r in lv.packets if now - WINDOW_S < t <= now + 0.05]
+                    if win:
+                        lv.median = statistics.median(win)
+                    rssi = lv.median
                 if d["online"] and rssi is not None:
                     d["rssi"] = rssi
                     d["distance_m"] = rssi_to_distance(rssi, p["rssi_1m"], p["n"], a["offset_db"])
@@ -749,8 +770,9 @@ class Room:
         last = self._last_try
         if last is not None and last[0] == want and (last[1] or now - last[2] < RETRY_S):
             return
-        if want == MODE_NORMAL and last is not None and last[0] == MODE_OK and last[1]:
+        if want == MODE_NORMAL and last is not None and last[0] == MODE_OK and (last[1] or self._inflight == MODE_OK):
             return              # after OK (green + chirp) the tag goes back to normal by itself
+                                # (also while the OK command is still on its way: a write can take ~3 s)
         self._inflight = want
         self._last_try = (want, False, now)
         self._spawn(self._send(want, "auto"))
@@ -932,7 +954,7 @@ class Room:
             self.sim = on
             for lv in self.live.values():       # start clean so real and fake packets don't mix
                 lv.packets.clear()
-                lv.kalman.reset()
+                lv.median = None
                 lv.last_t = None
                 lv.remote = None
                 lv.counts.clear()
@@ -983,7 +1005,7 @@ class Room:
         return centre
 
     def _sim_inject(self, now):
-        """About 8 packets per second per laptop, with realistic noise."""
+        """One packet every ~100 ms per laptop (like the real tag), with realistic noise."""
         for aid in list(self.anchors):
             nxt = self._sim_next.get(aid, now)
             a = self.anchors[aid]
@@ -997,7 +1019,7 @@ class Room:
                 rssi = round(max(-127.0, min(0.0, rssi)))
                 if rssi > -100:                      # very weak packets are simply not heard
                     self.ingest(aid, rssi, nxt, _sim=True)
-                nxt += self.rng.uniform(0.09, 0.16)   # ~8 packets/s
+                nxt += self.rng.uniform(0.095, 0.105)  # the tag advertises every 100 ms
             self._sim_next[aid] = nxt
 
     # ------------------------------------------------------------------ state for the page
@@ -1077,6 +1099,12 @@ def parse_datagram(data):
             continue
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not (lo <= v <= hi):
             raise ValueError(f"{key} out of range")
+    raw = msg.get("raw")
+    if raw is not None:      # optional: the window's individual RSSIs
+        if not isinstance(raw, list) or len(raw) > 50 or any(
+                isinstance(r, bool) or not isinstance(r, (int, float)) or not -127 <= r <= 0 for r in raw):
+            raise ValueError("raw must be a list of up to 50 RSSI values")
+        out["raw"] = raw
     return out
 
 

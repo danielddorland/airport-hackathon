@@ -70,6 +70,16 @@ class BagTruth:
                 return (x0 + (x1 - x0) * frac, y0 + (y1 - y0) * frac)
         return self.layout.xy_m[self.dest]  # in the make-up lane (or beyond: caller decides)
 
+    def belt(self, t):
+        """Where the bag physically is, as (from_node, to_node, fraction along that belt).
+        Waiting in the make-up lane = (dest, dest, 0). Used to draw bags moving along the belts."""
+        if t < self.release:
+            return None
+        for seg in self.segments:
+            if seg["t0"] <= t < seg["t1"]:
+                return [seg["from"], seg["to"], round(seg["moved"](t), 3)]
+        return [self.dest, self.dest, 0.0]
+
     def true_zone(self, t):
         """The zone the bag is really closest to (for measuring accuracy)."""
         p = self.position(t)

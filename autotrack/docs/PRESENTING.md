@@ -96,7 +96,7 @@ Ops dashboard open, ESP32 powered on (USB power bank or laptop), taped to a smal
 
 | Time | Do | Say |
 |---|---|---|
-| 0:00 | Point at the map at 10x | "This is the organisers' baggage simulation: 718 real bag paths over one hour. Every dot is where AutoTrack *thinks* a bag is, from noisy Bluetooth signals. The ground truth is hidden from it." |
+| 0:00 | Point at the map at 10x | "This is the organisers' baggage simulation: 718 real bag paths over one hour. The bags ride the belts exactly as the simulation moves them; AutoTrack never sees that - it only gets noisy Bluetooth signals and RFID reads. Click a bag: the red outline is the zone AutoTrack *thinks* it is in." |
 | 0:15 | Click scenario **1** and the bag | "A normal bag: checked in, followed zone by zone. Red ring = primary zone, dashed = nearby zones. At the loader the RFID read matches the flight, the handler pulls the tag, and that removal *is* the loading confirmation." |
 | 0:35 | Click scenario **2**, wait for MISROUTED, click **Pull bag** | "This bag is booked on AC 857 but the sorter sent it to the Calgary lane. We see it in the wrong lane with a plain-English reason before anyone loads it. One click and it's pulled." |
 | 0:55 | **Live tag:** click **Check in live bag on AC 1234**, set speed 1x | "Now a real tag. This ESP32 is our tag; the laptop's Bluetooth is the receiver at belt loader GA4, which serves AC 857. This bag is booked on AC 1234." |

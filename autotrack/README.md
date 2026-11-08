@@ -47,9 +47,11 @@ Press **Ctrl+C** in PowerShell to stop.
 - **Header:** the airport clock (the simulated hour runs 14:00-15:00), the phase (warm up -> crisis peak -> wind down),
   and SIMULATION or REAL BLE + SIM. Pause/Play, speed, a timeline slider to jump, and Restart.
 - **Ops dashboard:**
-  - **Map:** the baggage hall with 28 zones (one BLE receiver each). Coloured dots are where AutoTrack *thinks* each bag is
-    (the weighted-centroid estimate). Red dashed belts are jammed. Little lamps next to each belt loader turn red or amber when a bag is stopped.
-    Click a bag: a red ring shows its **primary zone**, and dashed rings show its **nearby zones**.
+  - **Map:** the baggage hall. Each **square** is a checkpoint/zone with one BLE receiver; the **gray columns** between them are the
+    conveyor belts (chevrons show the direction; two-way belts have two lanes). The small **squares riding the belts** are bags,
+    moving where the simulation says they physically are, coloured by AutoTrack's status. Click a bag: a **red outline** marks the zone
+    AutoTrack *thinks* it's in (from the noisy Bluetooth signal) and dashed outlines its **nearby zones**. Red belts are jammed; the little lamp
+    next to each belt loader turns red or amber when a bag is stopped.
   - **Status tiles:** how many bags are in each of the 8 statuses. Click one to filter the table.
   - **Active alerts:** each with a plain-English reason and the buttons a human uses to decide (Pull bag, Approve, Hold for security, Tag recovered).
   - **Demo scenarios:** 7 buttons. Each jumps to just before the event and slows to 2x.

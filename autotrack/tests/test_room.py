@@ -355,6 +355,38 @@ def test_tag_commands_sent_without_blocking():
     assert room.tag_mode_sent == 2 and room.last_write["ok"]
 
 
+def test_touching_a_corner_never_means_out_of_zone():
+    room, clock = new_room()
+    run(room, clock, 2, at_point(room, 1, 1))
+    # Tag touching daniel's corner (2,2). Make the two laptops on the far side read "too far"
+    # (alex (0,0) is the diagonal; joseph (2,0) + alex form a neighbour pair): noise like this
+    # used to raise OUT OF ZONE although the tag is at a laptop, i.e. inside the square.
+    touching = dict(at_point(room, 1.98, 1.98))
+    touching["alex"], touching["joseph"] = rssi_at(room, "alex", 3.5), rssi_at(room, "joseph", 3.5)
+    run(room, clock, 8, touching)
+    assert room.live["daniel"].touch.touching
+    assert room.status != "OUT OF ZONE" and not room.out_of_zone, room.status
+    # Same far-side readings once the tag has left the corner (no laptop near it): now it does count.
+    far = dict(at_point(room, 1.0, 1.4))
+    far["alex"], far["joseph"] = rssi_at(room, "alex", 3.5), rssi_at(room, "joseph", 3.5)
+    run(room, clock, 10, far)
+    assert room.status == "OUT OF ZONE", room.status
+
+
+def test_neighbours_come_from_the_map_not_the_join_order():
+    room, clock = new_room()
+    # Scramble the 'order' so alex and daniel (DIAGONAL on the map) come next to each other in the list.
+    room.configure({"anchors": {"daniel": {"order": 1}, "joseph": {"order": 2}}})
+    run(room, clock, 2, at_point(room, 1, 1))
+    far = dict(at_point(room, 1, 1))
+    far["alex"], far["daniel"] = rssi_at(room, "alex", 3.5), rssi_at(room, "daniel", 3.5)
+    run(room, clock, 6, far)
+    assert room.status == "ON TRACK", room.status       # a diagonal pair never triggers
+    sq = room.state()["zone"]["square"]
+    # the drawn square goes around the corners: the two diagonal corners are 2 steps apart
+    assert len(sq) == 4 and abs(sq.index([2.0, 2.0]) - sq.index([0.0, 0.0])) == 2, sq
+
+
 def test_livetag_suppressed_while_room_in_charge():
     from autotrack.livetag import LiveTagMonitor
 
@@ -404,11 +436,72 @@ def test_sim_runs_the_whole_story():
 
 # --------------------------------------------------------------- HTTP endpoints
 
+class _Http:
+    """A tiny HTTP client (stdlib only) for the real server running in a background thread."""
+    def __init__(self, base):
+        self.base = base
+
+    def _call(self, method, path, body=None):
+        import json
+        import urllib.error
+        import urllib.request
+        data = None if body is None else json.dumps(body).encode()
+        req = urllib.request.Request(self.base + path, data=data, method=method,
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return _Resp(r.status, r.read())
+        except urllib.error.HTTPError as e:
+            return _Resp(e.code, e.read())
+
+    def get(self, path):
+        return self._call("GET", path)
+
+    def post(self, path, json=None):
+        return self._call("POST", path, json if json is not None else {})
+
+
+class _Resp:
+    def __init__(self, status, raw):
+        self.status_code, self.text = status, raw.decode("utf-8", "replace")
+
+    def json(self):
+        import json
+        return json.loads(self.text)
+
+
+def _serve(app):
+    """Start the real FastAPI app with uvicorn on a free local port; returns (client, server)."""
+    import socket
+    import threading
+    import time
+    import uvicorn
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    threading.Thread(target=srv.run, daemon=True).start()
+    for _ in range(200):
+        if srv.started:
+            break
+        time.sleep(0.05)
+    assert srv.started, "server did not start"
+    return _Http(f"http://127.0.0.1:{port}"), srv
+
+
 def test_http_endpoints():
-    from fastapi.testclient import TestClient
     from autotrack import server
     server.CONFIG.update(mode="sim", laptop="alex")
-    with TestClient(server.app) as c:
+    c, srv = _serve(server.app)
+    try:
+        _http_checks(c, server)
+    finally:
+        srv.should_exit = True
+
+
+def _http_checks(c, server):
+    if True:
         st = c.get("/api/room").json()
         assert st["enabled"] and len(st["anchors"]) == 4 and st["bag"]["tag"] == "TAG-0001"
         # an unknown laptop joins the room automatically

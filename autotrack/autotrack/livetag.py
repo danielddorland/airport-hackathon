@@ -58,6 +58,7 @@ class LiveTagMonitor:
         self.pending_state, self.pending_count = None, 0
         self.smoothed = None
         self.near_rate = None             # packets/s we normally hear when the tag is close
+        self._quiet_until = 0.0           # ignore missing packets until then (the tag pauses during a command)
         self.missing = 0                  # packets missing from the current window (counted as weak)
         self.history = []                 # (time, smoothed rssi) for the last 60 s
         self.last_seen = None
@@ -129,6 +130,10 @@ class LiveTagMonitor:
         # Packets we'd expect at the normal close-range rate but didn't hear count as very weak.
         expected = int(round(self.near_rate * WINDOW_S)) if self.near_rate else 0
         self.missing = max(0, expected - len(heard)) if self.last_seen is not None else 0
+        if now < self._quiet_until:
+            # Sending a command connects to the tag, which pauses its broadcasts for a moment.
+            # Counting those gaps as "far" would trigger another command: an endless loop.
+            self.missing = 0
         if heard or self.missing:
             self.smoothed = statistics.median(heard + [MISSING_DBM] * self.missing)
             self.history.append((now, self.smoothed))
@@ -179,7 +184,11 @@ class LiveTagMonitor:
             return                        # the Room demo is in charge of the tag right now
 
         async def go():
-            ok = await self.ble.set_alert(TAG, mode)
+            self._quiet_until = time.time() + 60          # until the write finishes...
+            try:
+                ok = await self.ble.set_alert(TAG, mode)
+            finally:
+                self._quiet_until = time.time() + WINDOW_S + 1.0   # ...and one full window after it
             if ok:
                 self.alert_sent = mode
             else:
@@ -190,7 +199,11 @@ class LiveTagMonitor:
         """Test beep (mode 3) / Stop (mode 0) buttons."""
         if not self.ble:
             return False
-        ok = await self.ble.set_alert(TAG, mode)
+        self._quiet_until = time.time() + 60
+        try:
+            ok = await self.ble.set_alert(TAG, mode)
+        finally:
+            self._quiet_until = time.time() + WINDOW_S + 1.0
         self._note(("Test beep sent" if mode == MODE_LOCATE else "Stop sent - tag back to normal")
                    + ("" if ok else " (tag did not confirm)"))
         return ok

@@ -132,3 +132,14 @@ autotrack/
    restart in simulation mode.
 3. If the page looks stuck, press **Restart** in the header, or refresh the browser.
 4. If port 8000 is busy: `.venv\Scripts\python run.py --port 8001`.
+
+## Web demo (Vercel): the ops dashboard simulation in the browser
+
+`web/` is a static copy of the ops dashboard that runs the **real** airport simulation (sim.py, tracker.py,
+positioning.py) inside the visitor's browser with Pyodide, in a Web Worker. No server, nothing pre-recorded.
+The Live ESP32 and Room demo tabs are hidden there (they need a laptop's Bluetooth).
+
+- Rebuild after changing the simulation or the page: `.venv\Scripts\python tools\build_web.py`, then commit `web/`.
+- Try it locally: `.venv\Scripts\python -m http.server 8090 --directory web`, open http://127.0.0.1:8090
+- Vercel: new project from this repo, **Root Directory = `autotrack/web`**, Framework = **Other**, no build command.
+- Tests: `.venv\Scripts\python tests\test_webapi.py`

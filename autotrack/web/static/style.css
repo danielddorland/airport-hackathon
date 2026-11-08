@@ -1,0 +1,944 @@
+/* ==========================================================================
+   AutoTrack page styles: NEO-BRUTALISM, red + graphite.
+   Works offline: system font stacks only, no web fonts, no CDNs.
+   Rules of the look: thick solid ink borders, hard offset shadows (no blur),
+   little or no radius, flat fills, bold UPPERCASE headings and labels.
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ tokens
+   JS / SVG code references these names: keep them stable. */
+:root {
+  --paper: #F2EFE9;        /* page background, warm off-white */
+  --card: #FFFFFF;
+  --ink: #1C1D20;          /* graphite: text + every border */
+  --graphite: #2B2D32;
+  --graphite-2: #44474F;
+  --muted: #5E626B;
+  --steel: #A3A8AF;        /* conveyor belt gray */
+  --steel-light: #D3D6DA;
+  --line: #1C1D20;
+  --red: #E3141B;
+  --red-dark: #A50E13;
+  --red-tint: #FDE3E4;
+  --amber: #F59E0B;
+  --green: #1F9D55;
+  --blue: #2563EB;
+  --purple: #7C3AED;
+  --grey: #5E626B;         /* legacy name, kept for older inline code */
+
+  --mono: "JetBrains Mono", Consolas, "Cascadia Mono", "Courier New", monospace;
+  --display: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
+  --body: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+
+  /* hard shadows */
+  --sh-card: 6px 6px 0 var(--ink);
+  --sh-btn: 4px 4px 0 var(--ink);
+  --sh-small: 3px 3px 0 var(--ink);
+
+  /* grid-paper background used behind the SVG maps */
+  --grid-paper:
+    linear-gradient(rgba(28, 29, 32, .06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 29, 32, .06) 1px, transparent 1px);
+}
+
+/* -------------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.15;
+}
+h2 { font-size: 20px; }
+h3 { font-size: 14px; }
+/* counters like "(12)" next to headings stay in the body face */
+h1 .muted, h2 .muted, h3 .muted {
+  font-family: var(--body);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+p { margin: 8px 0; }
+a { color: var(--ink); text-decoration-thickness: 2px; text-underline-offset: 2px; }
+a:hover { color: var(--red-dark); }
+label { font-weight: 700; font-size: 13px; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); }
+.note { font-size: 12px; color: var(--muted); }
+
+/* one consistent, visible keyboard focus ring */
+:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* chunky scrollbars to match the look */
+* { scrollbar-color: var(--ink) var(--steel-light); }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--steel-light); }
+::-webkit-scrollbar-thumb { background: var(--graphite-2); border: 2px solid var(--steel-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+
+/* ------------------------------------------------------------------ header
+   Graphite bar, white text, red accent stripe, LED clock. */
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--graphite);
+  color: #fff;
+  border-bottom: 6px solid var(--red);
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo svg { flex: none; }
+.logo h1 { font-size: 24px; color: #fff; letter-spacing: .03em; }
+.logo small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--steel-light);
+  letter-spacing: .02em;
+}
+
+/* the clock: a big mono "LED" box */
+.clock {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .08em;
+  padding: 8px 14px;
+  color: #FF4146;
+  background: #0E0F11;
+  border: 3px solid #000;
+  box-shadow: inset 0 0 0 2px var(--graphite-2), 4px 4px 0 var(--red);
+  text-shadow: 0 0 8px rgba(255, 65, 70, .55);
+  font-variant-numeric: tabular-nums;
+}
+
+/* header badges sit on graphite: give them a light border so they read */
+header .badge { border-color: var(--paper); margin: 2px 0; }
+
+.controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+/* on the dark bar the ink shadow would vanish: use red there */
+header button { box-shadow: 4px 4px 0 var(--red); }
+header button:active { box-shadow: 1px 1px 0 var(--red); }
+header select { box-shadow: 3px 3px 0 var(--red); }
+#timeline { width: 220px; }
+
+/* --------------------------------------------------------------------- nav
+   Tabs: white blocks; the active tab is red with white text. */
+nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 18px 18px 14px;
+}
+nav button {
+  font-size: 13px;
+  padding: 9px 16px;
+}
+nav button.on {
+  background: var(--red);
+  color: #fff;
+}
+nav button.on:hover { background: var(--red-dark); }
+
+main { padding: 6px 18px 32px; }
+.tab { display: none; }
+.tab.on { display: block; }
+
+/* ------------------------------------------------------------------- cards */
+.card {
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  box-shadow: var(--sh-card);
+  padding: 16px;
+}
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------- buttons */
+button {
+  font: inherit;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  cursor: pointer;
+  padding: 8px 14px;
+  color: var(--ink);
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  box-shadow: var(--sh-btn);
+  transition: transform .06s ease-out, box-shadow .06s ease-out, background-color .1s;
+}
+button:hover { background: var(--steel-light); }
+button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+button.primary { background: var(--red); color: #fff; }
+button.primary:hover { background: var(--red-dark); }
+button.small {
+  font-size: 11px;
+  padding: 4px 9px;
+  border-width: 2px;
+  box-shadow: var(--sh-small);
+}
+button.small:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+button:disabled,
+button:disabled:hover {
+  opacity: .5;
+  cursor: not-allowed;
+  background: var(--card);
+}
+button.primary:disabled { background: var(--red); }
+button:disabled:active { transform: none; box-shadow: var(--sh-btn); }
+
+/* ----------------------------------------------------------------- inputs
+   White, 3px ink border, no inset shadows. */
+select,
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]) {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 6px 10px;
+  box-shadow: none;
+}
+select { cursor: pointer; font-weight: 700; }
+input::placeholder { color: var(--muted); opacity: 1; }
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--red);
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+}
+input[type="range"] { accent-color: var(--red); cursor: pointer; }
+details summary { cursor: pointer; }
+details summary::marker { color: var(--red); }
+
+/* ----------------------------------------------------------------- badges
+   Flat status pills (JS sets the background inline). */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  font-family: var(--body);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--graphite-2);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+}
+
+/* ---------------------------------------------------------- ops dashboard */
+.ops {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: 22px;
+}
+.side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+/* status count tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.tile {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  box-shadow: var(--sh-small);
+  padding: 8px;
+  cursor: pointer;
+  min-width: 0;
+  transition: transform .06s ease-out, box-shadow .06s ease-out;
+}
+.tile:hover { background: var(--red-tint); }
+.tile:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.tile b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.tile span {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.scroll { max-height: 330px; overflow: auto; padding-right: 6px; }
+
+/* demo scenarios list */
+.sc {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 2px solid var(--ink);
+}
+.sc:last-child { border-bottom: 0; }
+.sc .num {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: #fff;
+  background: var(--red);
+  border: 2px solid var(--ink);
+}
+
+/* BLE tag fleet counters */
+.fleet {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.fleet div {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 6px 2px;
+  min-width: 0;
+}
+.fleet b { display: block; font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.fleet span {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+/* map legend row under the hall map */
+#legend { gap: 6px 14px; }
+#legend span { white-space: nowrap; }
+
+/* ---------------------------------------------------------------- map svg
+   #map (baggage hall), #ltmap and #ltspark (live ESP32 tab). */
+#map, #ltmap, #ltspark {
+  width: 100%;
+  height: auto;
+  display: block;
+  background-color: var(--steel-light);
+  background-image: var(--grid-paper);
+  background-size: 20px 20px;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  box-shadow: var(--sh-card);
+}
+#map text { font-family: var(--body); }
+
+/* conveyor belts: a dark frame, a gray belt, and rollers that move in the belt's direction.
+   Belts only run horizontally/vertically (right-angle bends), each in its own lane. */
+.belt-edge {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 12;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+.belt {
+  fill: none;
+  stroke: var(--steel);
+  stroke-width: 8;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+.belt-rollers {
+  fill: none;
+  stroke: var(--graphite-2);
+  stroke-width: 8;
+  stroke-dasharray: 2 6;
+  stroke-linejoin: miter;
+  pointer-events: none;
+  animation: roll .7s linear infinite;   /* rollers travel the way the belt runs */
+}
+@keyframes roll { to { stroke-dashoffset: -8; } }
+#map.paused .belt-rollers { animation-play-state: paused; }
+.belt.jam { stroke: var(--red); }
+.belt-rollers.jam { stroke: var(--red-dark); animation: none; }   /* jammed: belt stopped */
+.belt-chevron { fill: var(--ink); pointer-events: none; }
+
+/* checkpoints: flat squares with a hard ink shadow rect behind them */
+.cp-shadow { fill: var(--ink); }
+.cp {
+  fill: #fff;
+  stroke: var(--ink);
+  stroke-width: 3;
+  cursor: pointer;
+}
+.cp.k-checkin,
+.cp.k-transfer  { fill: var(--red-tint); }
+.cp.k-sortation { fill: #fff; }
+.cp.k-transport,
+.cp.k-storage   { fill: var(--steel-light); }
+.cp.k-makeup    { fill: var(--graphite); }
+.zone:hover .cp { stroke: var(--red); }
+.cp-text {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 900;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.cp-text.on-dark { fill: #fff; }
+
+/* occupancy count: small red badge */
+.cp-count-bg { fill: var(--red); stroke: var(--ink); stroke-width: 2; }
+.cp-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.flight-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  /* --muted on --steel-light is under 4.5:1; --graphite-2 keeps AA */
+  fill: var(--graphite-2);
+}
+
+/* loader light next to each make-up lane (no base fill, so a fill
+   attribute still works if JS sets one) */
+.lamp { stroke: var(--ink); stroke-width: 2; }
+.lamp.green { fill: var(--green); }
+.lamp.amber { fill: var(--amber); }
+.lamp.red   { fill: var(--red); }
+
+/* followed bag: its zone solid, nearby zones dashed */
+.ring-primary { fill: none; stroke: var(--red); stroke-width: 4; pointer-events: none; }
+.ring-near {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+/* bags (fill is set inline by status, so no fill here) */
+.bag { stroke: var(--ink); stroke-width: 2; cursor: pointer; }
+.bag.followed { stroke-width: 3; }
+.bag-label {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 900;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* tags that fell off a bag */
+.fallen { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: square; }
+.fallen-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ tables
+   Graphite header row with white text, 2px row lines. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--ink);
+}
+th {
+  background: var(--graphite);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* keep the header visible while the bag list scrolls */
+.scroll thead th { position: sticky; top: 0; z-index: 1; }
+tr.click { cursor: pointer; }
+tr.click:hover { background: var(--red-tint); }
+
+/* ------------------------------------------------------------------ alerts
+   White card, 2px ink border, thick left bar in the status colour.
+   JS sets style="border-color:<status>" inline: the three ink sides are
+   forced back with !important so only the left bar takes the colour. */
+.alert {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-left-width: 10px;
+  border-left-style: solid;
+  border-left-color: var(--muted);
+  border-top-color: var(--ink) !important;
+  border-right-color: var(--ink) !important;
+  border-bottom-color: var(--ink) !important;
+  border-radius: 0;
+  box-shadow: var(--sh-small);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.alert:last-child { margin-bottom: 4px; }
+.alert .acts { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.alert h3 { font-size: 15px; }
+
+/* urgent alerts flash red-tint */
+.flash { animation: flash 1s infinite; }
+@keyframes flash { 50% { background: var(--red-tint); } }
+
+/* ------------------------------------------------------------------ drawer
+   Bag details: white panel sliding in from the right. */
+#drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(460px, 100%);
+  overflow: auto;
+  padding: 20px;
+  background: var(--card);
+  border-left: 4px solid var(--ink);
+  box-shadow: -8px 0 0 var(--red), -12px 0 0 var(--ink);
+  transform: translateX(calc(100% + 24px));
+  transition: transform .2s ease-out;
+  z-index: 10;
+}
+#drawer.on { transform: none; }
+#drawer h2 { font-size: 24px; }
+#drawer h3 { margin-top: 14px; }
+#drawer .acts { margin: 0 0 10px; gap: 8px; }
+
+.kv {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 0;
+  font-size: 13px;
+  margin: 12px 0;
+  border: 2px solid var(--ink);
+}
+.kv div { padding: 5px 8px; border-bottom: 2px solid var(--steel-light); min-width: 0; overflow-wrap: anywhere; }
+.kv div:nth-last-child(-n+2) { border-bottom: 0; }
+.kv div:nth-child(odd) {
+  color: var(--graphite-2);
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-right: 2px solid var(--ink);
+}
+
+/* signal strength bars */
+.bar {
+  height: 12px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  overflow: hidden;
+}
+.bar i { display: block; height: 100%; background: var(--blue); }
+
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photos img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  border: 3px solid var(--ink);
+  box-shadow: var(--sh-small);
+  margin-bottom: 4px;
+}
+
+/* timeline / history list */
+.hist {
+  font-size: 12px;
+  border-left: 4px solid var(--ink);
+  padding-left: 12px;
+}
+.hist div { margin-bottom: 6px; }
+
+/* ----------------------------------------------------------- loader phone */
+.phone {
+  width: min(400px, 100%);
+  margin: 0 auto;
+  padding: 26px 20px 20px;
+  position: relative;
+  background: var(--card);
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 8px 8px 0 var(--ink);
+}
+/* speaker slot */
+.phone::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 64px;
+  height: 7px;
+  margin-left: -32px;
+  background: var(--ink);
+}
+
+/* the loader light: a chunky square-ish lamp */
+.light {
+  width: 160px;
+  height: 120px;
+  margin: 18px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--steel);
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 6px rgba(255, 255, 255, .22), 6px 6px 0 var(--ink);
+}
+.light.red { background: var(--red); animation: pulse .6s infinite alternate; }
+.light.amber { background: var(--amber); color: var(--ink); animation: pulse 1s infinite alternate; }
+.light.green { background: var(--green); }
+@keyframes pulse { from { opacity: 1; } to { opacity: .55; } }
+
+#lmsg { font-size: 15px; }
+#lbags .badge { margin: 3px 0; }
+
+/* -------------------------------------------------------------- passenger */
+.pass { width: min(520px, 100%); margin: 0 auto; }
+#presult .alert h3 { margin-bottom: 4px; }
+
+/* ------------------------------------------------------------------- feed */
+#feed {
+  border: 2px solid var(--ink);
+  background: var(--card);
+}
+.feedline {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-bottom: 2px solid var(--steel-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feedline:nth-child(even) { background: var(--paper); }
+.feedline:hover { background: var(--red-tint); }
+.feedline:last-child { border-bottom: 0; }
+
+/* ------------------------------------------------------------ busy overlay */
+#busy {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: rgba(242, 239, 233, .85);
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+#busy.on { display: flex; }
+
+/* -------------------------------------------------------------- live ESP32 */
+.ltstats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.ltstats div {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  box-shadow: var(--sh-small);
+  padding: 10px;
+  text-align: center;
+  min-width: 0;
+}
+.ltstats span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ltstats b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* calibration panel */
+.ltcal {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  padding: 10px 12px;
+  margin: 4px 0 16px;
+}
+.ltcal summary { font-size: 13px; }
+.ltcal summary b { text-transform: uppercase; letter-spacing: .04em; }
+.ltcal[open] summary { margin-bottom: 6px; }
+#ltpoints { overflow-x: auto; }   /* wide calibration table scrolls on phones */
+.ltcal table { width: auto; font-size: 13px; }
+.ltcal td, .ltcal th { padding: 4px 10px; text-align: left; }
+
+#ltevents div { padding: 3px 0; border-bottom: 2px solid var(--steel-light); }
+
+/* #ltmap: distance track from the laptop (checkpoint) outwards */
+#ltmap text { font-family: var(--body); }
+.lt-track-edge { fill: none; stroke: var(--ink); stroke-width: 16; stroke-linecap: butt; }
+.lt-track { fill: none; stroke: var(--steel); stroke-width: 11; stroke-linecap: butt; }
+.lt-tick { stroke: var(--ink); stroke-width: 2; }
+.lt-ticktext {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  /* --muted on --steel-light is under 4.5:1; --graphite-2 keeps AA */
+  fill: var(--graphite-2);
+  text-anchor: middle;
+}
+.lt-laptop { fill: var(--ink); }
+.lt-screen { fill: var(--steel-light); }
+.lt-thr { fill: none; stroke: var(--red); stroke-width: 3; stroke-dasharray: 8 6; }
+.lt-thrtext { font-family: var(--display); font-size: 13px; font-weight: 900; fill: var(--red-dark); }
+.lt-good { fill: var(--green); opacity: .12; }
+.lt-bad { fill: var(--red); opacity: .10; }
+.lt-range { fill: var(--ink); opacity: .15; }
+.lt-body { stroke: var(--ink); stroke-width: 3; }   /* fill set inline by state */
+.lt-bodytext {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 900;
+  fill: #fff;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.lt-label { font-family: var(--display); font-size: 14px; font-weight: 900; fill: var(--ink); }
+
+/* tag glides along the line; blinks when too far / lost */
+#lttag { transition: transform 300ms linear; }
+#lttag.flash { animation: none; }
+#lttag.flash .lt-body { animation: ltblink .35s infinite alternate; }
+@keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
+
+/* --------------------------------------------------------------- room demo
+   3-4 laptops in a square triangulating one tag. Everything here starts "room-". */
+
+/* big bag-status banner at the top of the tab */
+.room-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  color: var(--ink);
+  background: var(--card);
+  border: 4px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.room-banner h2 { font-size: clamp(28px, 5vw, 52px); letter-spacing: .03em; }
+.room-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+.room-reason { margin-top: 6px; font-size: 16px; font-weight: 700; max-width: 75ch; }
+.room-banner-side { text-align: right; font-size: 13px; }
+.room-badges { gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.room-st-alert { color: #fff; background: var(--red); animation: room-pulse .7s infinite alternate; }
+.room-st-ok { color: #fff; background: #16803F; }      /* darker green so white text keeps AA */
+.room-st-track { background: var(--card); }
+.room-st-off { color: var(--graphite-2); background: var(--steel-light); }
+@keyframes room-pulse { from { background: var(--red); } to { background: var(--red-dark); } }
+
+.room-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+  gap: 22px;
+}
+
+/* map mode buttons: the active one is red like the nav tabs */
+.room-modes { gap: 8px; }
+.room-modes button.on { color: #fff; background: var(--red); }
+.room-legend { gap: 6px 14px; margin-top: 8px; }
+.room-legend span { white-space: nowrap; }
+
+/* the map itself (drawn in metres, scaled by JS) */
+#roommap {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: var(--sh-card);
+  user-select: none;
+}
+#roommap.room-pick { cursor: crosshair; }
+#roommap.room-move .room-anchor-g { cursor: grab; }
+#roommap.room-move, #roommap.room-pick { touch-action: none; }
+.room-gl { stroke: rgba(28, 29, 32, .10); stroke-width: 1; }
+.room-gl.major { stroke: rgba(28, 29, 32, .25); }
+.room-axis { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--graphite-2); }
+.room-zone { fill: rgba(31, 157, 85, .06); stroke: var(--ink); stroke-width: 3; stroke-dasharray: 10 7; }
+.room-zone.in { fill: rgba(31, 157, 85, .10); }
+.room-zone.out { fill: rgba(227, 20, 27, .10); stroke: var(--red); }
+.room-viol { stroke: var(--red); stroke-width: 10; stroke-linecap: round; opacity: .85; animation: ltblink .35s infinite alternate; }
+.room-range { fill: none; stroke-width: 2; stroke-dasharray: 6 6; opacity: .6; }   /* colour set inline per role */
+.room-range.top { stroke-width: 4; opacity: .95; }
+.room-trail { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; opacity: .5; }
+.room-sigma { fill: rgba(37, 99, 235, .14); stroke: var(--blue); stroke-width: 1.5; }
+.room-pos { fill: var(--blue); stroke: var(--ink); stroke-width: 3; }
+.room-raw { fill: none; stroke: var(--ink); stroke-width: 2; }
+.room-cross { fill: none; stroke: var(--purple); stroke-width: 3; }
+.room-cross-text { fill: var(--purple); }
+.room-anchor { stroke-width: 3; }
+.room-anchor-shadow { fill: var(--ink); }
+.room-ring { fill: none; stroke: var(--ink); stroke-width: 5; animation: ltblink .4s infinite alternate; }
+.room-name, .room-sub {
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.room-name { font-family: var(--display); font-size: 14px; font-weight: 900; fill: var(--ink); stroke-width: 4px; }
+.room-sub { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--graphite-2); stroke-width: 3px; }
+.room-empty { font-family: var(--display); font-size: 18px; font-weight: 900; fill: var(--graphite-2); text-anchor: middle; }
+
+/* calibration card */
+.room-big { font-size: 15px; padding: 12px 18px; }
+.room-progress { height: 18px; margin: 12px 0 6px; }
+.room-progress i { background: var(--red); transition: width .3s linear; }
+
+/* tables (laptops + calibration results) scroll sideways on small screens */
+.room-tablewrap { overflow-x: auto; }
+.room-tablewrap table { font-size: 12px; }
+.room-tablewrap td { vertical-align: middle; }
+.room-tablewrap input:not([type="checkbox"]), .room-tablewrap select { padding: 3px 6px; font-size: 12px; border-width: 2px; }
+.room-wbar { display: inline-block; width: 64px; height: 10px; vertical-align: middle; margin-right: 4px; }
+.room-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+}
+.room-dot.on { background: var(--green); }
+
+/* settings form: two columns of label + box */
+.room-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 10px; }
+.room-form label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.room-form label.room-check { flex-direction: row; align-items: center; gap: 8px; }
+.room-form input:not([type="checkbox"]) { width: 100%; }
+
+/* timeline lines, left bar coloured by kind (set inline) */
+.room-ev {
+  padding: 5px 8px;
+  font-size: 12.5px;
+  border-left: 6px solid var(--muted);
+  border-bottom: 2px solid var(--steel-light);
+}
+
+/* -------------------------------------------------------------- responsive */
+@media (max-width: 1100px) {
+  .ops { grid-template-columns: 1fr; }
+  .room-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  header { padding: 12px 16px; gap: 12px; }
+  .logo h1 { font-size: 20px; }
+  .clock { font-size: 22px; padding: 6px 10px; }
+  .controls { margin-left: 0; }
+  #timeline { width: 100%; flex: 1 1 140px; }
+  nav { padding: 14px 16px 10px; gap: 8px; }
+  nav button { font-size: 11px; padding: 6px 10px; }
+  main { padding: 4px 16px 28px; }
+  .card { padding: 12px; box-shadow: 4px 4px 0 var(--ink); }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .fleet { grid-template-columns: repeat(3, 1fr); }
+  .ltstats { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: 105px 1fr; }
+  #busy { font-size: 22px; }
+  .phone { padding: 24px 14px 16px; box-shadow: 5px 5px 0 var(--ink); }
+  .room-banner { padding: 14px 16px; box-shadow: 5px 5px 0 var(--ink); }
+  .room-banner-side { text-align: left; }
+  .room-badges { justify-content: flex-start; }
+  .room-form { grid-template-columns: 1fr; }
+}
+
+/* respect reduced motion: keep the state visible, drop the movement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+  .belt-rollers, .light.red, .light.amber, #lttag.flash .lt-body { animation: none; }
+  .room-st-alert, .room-viol, .room-ring { animation: none; }
+  .flash { animation: none; background: var(--red-tint); }
+}

@@ -1,0 +1,1329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[web demo] AutoTrack</title>
+<!-- One page, no internet needed: plain HTML + CSS + JavaScript. It asks the local server
+     (server.py) for the latest state twice a second and draws it. -->
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  /* web demo: these tabs need the real laptop + ESP32 */
+  nav button[data-tab="live"], nav button[data-tab="room"] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg width="34" height="40" viewBox="0 0 34 40" aria-hidden="true"><path d="M17 0C7.6 0 0 7.6 0 17c0 12 17 23 17 23s17-11 17-23C34 7.6 26.4 0 17 0z" fill="#E3141B"/><circle cx="17" cy="16" r="6.5" fill="#fff"/></svg>
+    <div><h1>AutoTrack</h1><small>Daniel Solutions &middot; catch the wrong-plane bag before it leaves</small></div>
+  </div>
+  <div class="clock" id="clock">--:--:--</div>
+  <div><span class="badge" id="phase">-</span><br><span class="badge" id="mode">SIM</span></div>
+  <div class="controls">
+    <button id="play">Pause</button>
+    <select id="speed" title="Simulated seconds per real second">
+      <option value="1">1x (real time)</option><option value="2">2x</option><option value="5">5x</option>
+      <option value="10">10x</option><option value="20">20x</option><option value="60">60x</option>
+    </select>
+    <input type="range" id="timeline" min="0" max="3600" value="0" title="Jump in time">
+    <button id="restart" title="Start the hour again">Restart</button>
+  </div>
+</header>
+<nav>
+  <button data-tab="ops" class="on">Ops dashboard</button>
+  <button data-tab="live">Live ESP32</button>
+  <button data-tab="room">Room demo</button>
+  <button data-tab="loader">Loader handheld</button>
+  <button data-tab="passenger">Passenger view</button>
+  <button data-tab="feed">Message feed</button>
+</nav>
+
+<main>
+  <!-- ======================= LIVE ESP32 ======================= -->
+  <section class="tab" id="tab-live">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Live ESP32 tag: stay near the checkpoint</h2>
+        <span class="badge" id="ltbadge">-</span>
+      </div>
+      <p class="note" id="lthelp" style="margin:6px 0 10px"></p>
+      <svg id="ltmap" viewBox="0 0 1000 250"></svg>
+      <div class="ltstats">
+        <div><span>Signal (smoothed)</span><b id="ltrssi">--</b></div>
+        <div><span>Distance (rough)</span><b id="ltdist">--</b></div>
+        <div><span>State</span><b id="ltstate">--</b></div>
+      </div>
+      <div class="row" style="margin:12px 0 4px">
+        <label>This laptop: <select id="ltlaptop"></select></label>
+        <input id="ltnewname" placeholder="New laptop (name)" size="16">
+        <button class="small" onclick="addLaptop()">Add</button>
+        <span class="note" id="ltcurve"></span>
+      </div>
+      <div class="row" style="margin:8px 0 12px">
+        <label>Too far beyond <input type="number" id="ltthrm" value="1.9" step="0.1" min="0.2" max="15" style="width:70px"> m</label>
+        <span class="note" id="ltthrdbm"></span>
+        <button class="primary" onclick="beep(3)">Test beep</button>
+        <button onclick="beep(0)">Stop</button>
+      </div>
+      <details id="ltcal" class="ltcal">
+        <summary><b>Calibrate this laptop</b> <span class="note" id="ltcalsum"></span></summary>
+        <p class="note" style="margin:6px 0">Every laptop hears the ESP differently, so each one needs its own numbers.
+          Put the ESP at a <b>measured</b> distance from this laptop (tape measure, same height as the laptop, nobody in between),
+          keep it still, and press <b>Measure</b>. Do it at 2&ndash;3 distances, e.g. 0.3 m, 1 m and 3 m.
+          Measuring the same distance again replaces the old reading.</p>
+        <div class="row">
+          <label>ESP is <select id="ltcald">
+            <option value="0.05">0.05 (touching)</option><option value="0.3">0.3</option><option value="0.5">0.5</option><option value="1" selected>1</option>
+            <option value="2">2</option><option value="3">3</option><option value="4">4</option></select> m away</label>
+          <button class="primary" id="ltcalbtn" onclick="measurePoint()">Measure (8 s)</button>
+          <span class="note">or type what you read:</span>
+          <input type="number" id="ltcalman" placeholder="-73" step="1" style="width:70px"> <span class="note">dBm</span>
+          <button class="small" onclick="addManualPoint()">Add reading</button>
+          <button class="small" onclick="clearPoints()">Clear this laptop's measurements</button>
+          <span class="note" id="ltcalmsg"></span>
+        </div>
+        <div id="ltpoints" style="margin-top:8px"></div>
+      </details>
+      <h3 style="margin:6px 0">Signal, last 60 seconds</h3>
+      <svg id="ltspark" viewBox="0 0 1000 140"></svg>
+      <h3 style="margin:10px 0 4px">What happened</h3>
+      <div id="ltevents" class="note"></div>
+    </div>
+  </section>
+  <!-- ======================= ROOM DEMO ======================= -->
+  <!-- 3-4 laptops stand at the corners of a square and all listen to the one ESP32 tag.
+       The server (autotrack/room.py) turns each laptop's signal into a rough distance,
+       combines them into an approximate position and decides the bag status. -->
+  <section class="tab" id="tab-room">
+    <div class="room-banner room-st-off" id="roombanner">
+      <div class="room-banner-main">
+        <span class="room-kicker">Bag status</span>
+        <h2 id="roomstatus">Connecting...</h2>
+        <div class="room-reason" id="roomreason"></div>
+      </div>
+      <div class="room-banner-side">
+        <div class="mono" id="roombag"></div>
+        <div class="row room-badges" id="roombadges"></div>
+      </div>
+    </div>
+
+    <div class="room-grid">
+      <div class="side">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h3>Room map <span class="muted" id="roommapsum"></span></h3>
+            <div class="row room-modes" id="roommodes">
+              <button class="small on" data-room-mode="view">View</button>
+              <button class="small" data-room-mode="pick">Pick calibration spot</button>
+              <button class="small" data-room-mode="move">Move laptops</button>
+            </div>
+          </div>
+          <p class="note" id="roommodehelp" style="margin:0 0 8px"></p>
+          <svg id="roommap" viewBox="0 0 900 600" role="img" aria-label="Room map: laptops, zone square and the estimated tag position"></svg>
+          <div class="row" id="roompos" style="margin-top:10px;font-weight:700"></div>
+          <div class="row note room-legend">
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#1F9D55" stroke="#1C1D20" stroke-width="2"/></svg> correct checkpoint</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#E3141B" stroke="#1C1D20" stroke-width="2"/></svg> wrong checkpoint</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#2B2D32" stroke="#1C1D20" stroke-width="2"/></svg> corner</span>
+            <span><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" fill="#fff" stroke="#2B2D32" stroke-width="2"/></svg> offline (hollow)</span>
+            <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#2563EB" stroke="#1C1D20" stroke-width="2"/></svg> tag (smoothed)</span>
+            <span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="#1C1D20" stroke-width="2"/></svg> raw fix</span>
+            <span><svg width="22" height="14"><line x1="1" y1="7" x2="21" y2="7" stroke="#1C1D20" stroke-width="2" stroke-dasharray="4 3"/></svg> distance circles (thick = 3 closest)</span>
+          </div>
+          <p class="note" style="margin-top:8px"><b>Position is approximate (Bluetooth signal strength, no UWB): expect ~0.5-1.5 m error.</b>
+            Each laptop turns the signal into a distance with RSSI = A &minus; 10&middot;n&middot;log10(d). The 3 closest laptops count most,
+            then a smoothing filter (Kalman) steadies the dot.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:4px">Laptops <span class="muted" id="roomnlap"></span></h3>
+          <p class="note" style="margin:0 0 8px">Other laptops join by running <span class="mono">python tools/reporter.py --server http://&lt;this-ip&gt;:8000 --laptop &lt;name&gt;</span>.
+            <b>Set touch:</b> hold the tag against that laptop, then press its button (uses the last 2 s).</p>
+          <div class="room-tablewrap" id="roomtable"></div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h3>Calibrate room (noise floor)</h3>
+          <p class="note" style="margin:6px 0">Hold the tag <b>still</b> at the crosshair (pick a spot on the map, or leave it to use the centre of the laptops) and press the button.
+            Every laptop records the signal. Because we know the real distance to the spot, the standard formula
+            RSSI = A &minus; 10&middot;n&middot;log10(d) tells us each laptop's true 1 m level (A), and the wobble of the signal is its noise floor.</p>
+          <div class="row">
+            <button class="primary room-big" id="roomcalbtn">Calibrate room (noise floor)</button>
+            <label>for <select id="roomcalsecs"><option value="5">5 s</option><option value="8" selected>8 s</option><option value="12">12 s</option></select></label>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <span class="note" id="roomspot"></span>
+            <button class="small" id="roompickbtn">Pick spot on map</button>
+            <button class="small" id="roomcentrebtn">Use centre</button>
+          </div>
+          <div class="bar room-progress"><i id="roomcalbar" style="width:0%"></i></div>
+          <div class="note" id="roomcalmsg"></div>
+          <div class="room-tablewrap" id="roomcalres" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Demo controls</h3>
+          <div class="row" style="margin-top:10px">
+            <button id="roomsimbtn">Simulate (no hardware)</button>
+            <button id="roomresetbtn">Reset demo</button>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="primary" id="roombeepbtn">Test beep</button>
+            <button id="roomstopbtn">Stop</button>
+            <button id="roommutebtn">Mute sound</button>
+          </div>
+          <div class="note" id="roomtaginfo" style="margin-top:10px"></div>
+          <div class="note" id="roommsg" style="margin-top:4px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Settings</h3>
+          <div class="room-form">
+            <label class="room-check"><input type="checkbox" id="roomenabled"> Room demo on</label>
+            <span></span>
+            <label>Zone range (m) <input type="number" id="roomrange" step="0.1" min="0.3" max="15"></label>
+            <label>Hold before alarm (s) <input type="number" id="roomhold" step="0.5" min="0" max="30"></label>
+            <label>Weight: 3 closest <input type="number" id="roomw3" step="0.1" min="0" max="5"></label>
+            <label>Weight: others <input type="number" id="roomwo" step="0.05" min="0" max="5"></label>
+            <label>Bag flight <input id="roombflight" placeholder="AC 1234"></label>
+            <label>Booking ref <input id="roombbook" placeholder="DSX42K"></label>
+            <label>Bag tag number <input id="roombplate" placeholder="AC123456"></label>
+          </div>
+          <p class="note" style="margin-top:10px"><b>Out of zone</b> = two laptops next to each other both think the tag is further than the zone range, for longer than the hold time.
+            <b>Weights</b>: how much the 3 closest laptops count compared with the others when working out the position.</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:8px">Timeline</h3>
+          <div class="scroll" id="roomevents" style="max-height:320px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= OPS ======================= -->
+  <section class="tab on" id="tab-ops">
+    <div class="ops">
+      <div class="side">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h3>Baggage hall (simplified layout, not YYZ)</h3>
+            <span class="note">bags ride the belts as in the simulation &middot; <b style="color:var(--red)">red outline</b> = zone AutoTrack thinks the selected bag is in &middot; <b style="color:var(--red)">red belt</b> = jammed</span>
+          </div>
+          <svg id="map" viewBox="20 0 1010 760"></svg>
+          <div class="row note" style="margin-top:6px" id="legend"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px">
+            <h3>Bags in the system <span class="muted" id="nbags"></span></h3>
+            <div class="row"><select id="filter"><option value="">All statuses</option></select>
+              <input id="search" placeholder="Bag id / tag number / flight" size="22"></div>
+          </div>
+          <div class="scroll" style="max-height:360px"><table id="bags"><thead><tr><th>Bag</th><th>Status</th><th>Zone (+ nearby)</th><th>Flight</th><th>Reason</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card">
+          <div class="tiles" id="tiles"></div>
+          <h3 style="margin-bottom:8px">Active alerts <span class="muted" id="nalerts"></span></h3>
+          <div class="scroll" id="alerts"></div>
+        </div>
+        <div class="card">
+          <h3>Demo scenarios</h3>
+          <p class="note" style="margin:4px 0 6px">Click one: the clock jumps to just before it happens and slows to 2x. Click the bag to follow it.</p>
+          <div id="scenarios"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:8px">BLE tag fleet (closed loop inside YYZ)</h3>
+          <div class="fleet" id="fleet"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= LOADER ======================= -->
+  <section class="tab" id="tab-loader">
+    <div class="phone">
+      <div class="row" style="justify-content:space-between">
+        <h2>Belt loader</h2><select id="gate"></select>
+      </div>
+      <div class="muted" id="lflight" style="margin-top:4px"></div>
+      <div class="light green" id="llight">READY</div>
+      <div style="text-align:center;font-weight:700" id="lmsg"></div>
+      <div style="text-align:center;margin:6px 0 10px" id="lpaused"></div>
+      <h3 style="margin-bottom:6px">Alerts for this belt</h3>
+      <div id="lalerts"></div>
+      <h3 style="margin:12px 0 6px">Bags in this make-up lane</h3>
+      <div id="lbags" class="note"></div>
+      <p class="note" style="margin-top:12px">Ramp crews wear hearing protection, so every alert is visual too: this screen, the loader light, and the tag's own flashing LED.</p>
+    </div>
+  </section>
+
+  <!-- ======================= PASSENGER ======================= -->
+  <section class="tab" id="tab-passenger">
+    <div class="pass">
+      <div class="card">
+        <h2>Where is my bag?</h2>
+        <p class="note">Enter your booking reference and the 10-digit bag tag number under the barcode on your bag tag receipt. You only ever see your own bag.</p>
+        <div class="row" style="margin:10px 0">
+          <input id="pbook" placeholder="Booking ref (e.g. K7Q2XM)" size="18">
+          <input id="pplate" placeholder="Bag tag number" size="16">
+          <button class="primary" onclick="lookup()">Find my bag</button>
+        </div>
+        <div id="presult"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Demo passengers</h3>
+        <p class="note">Shortcuts for the demo (the scenario bags). Click to fill in.</p>
+        <div id="pdemo" class="note"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= FEED ======================= -->
+  <section class="tab" id="tab-feed">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3>Shared message feed</h3>
+        <div class="row"><label class="note"><input type="checkbox" id="hidezone"> hide ZONE_CHANGED</label>
+          <label class="note"><input type="checkbox" id="pausefeed"> pause</label></div>
+      </div>
+      <p class="note">Every event is one small JSON message. Our dashboards subscribe to it; the same feed could go to Brock SmartBag and airline BSM/BPM messages
+        (live stream for other systems: <span class="mono">/api/stream</span>; also saved in <span class="mono">data/events.db</span>).</p>
+      <div id="feed" style="max-height:620px;overflow:auto"></div>
+    </div>
+  </section>
+</main>
+
+<aside id="drawer"></aside>
+<div id="busy"></div>
+
+<script src="/pyshim.js"></script>
+<script>
+const STATUS = {
+  "IDENTITY FLAG": "#7A0B0F", "WRONG AIRCRAFT": "#E3141B", "IDENTITY REVIEW": "#7C3AED", "MISROUTED": "#F59E0B",
+  "TAG NOT RETURNED": "#B45309", "NOT SEEN": "#6B7280", "LATE": "#2563EB", "ON TRACK": "#16803F" };
+// text colour that reads well ON each status colour (amber needs dark text)
+const ON_STATUS = (st) => st === "MISROUTED" ? "#1C1D20" : "#fff";
+// status colour used as TEXT on white (amber is too faint as text)
+const STATUS_TEXT = (st) => st === "MISROUTED" ? "#8A5A00" : STATUS[st];
+const KIND_LABEL = { checkin: "Check-in", transfer: "Transfer input", sortation: "Sortation (RFID tunnel)",
+               transport: "Transport", storage: "Early bag storage", makeup: "Make-up + loader (RFID portal)" };
+let L = null, S = null, lastSeq = 0, openBag = null, feedLines = [];
+const POLL_MS = 250;          // ask the server for the latest state 4 times a second
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pill = (st) => `<span class="badge" style="background:${STATUS[st] || "#44474F"};color:${ON_STATUS(st)}">${esc(st)}</span>`;
+
+async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+// ---------------------------------------------------------------- setup
+async function init() {
+  L = await get("/api/layout");
+  drawMapBase();
+  $("legend").innerHTML = Object.entries(KIND_LABEL)
+    .map(([k, t]) => `<span><svg width="14" height="14"><rect class="cp k-${k}" x="1.5" y="1.5" width="11" height="11" style="stroke-width:2"/></svg> ${t}</span>`).join(" ")
+    + ` <span><svg width="26" height="14"><rect x="0" y="3" width="26" height="8" fill="#A3A8AF" stroke="#1C1D20" stroke-width="2"/></svg> conveyor belt</span>`;
+  $("filter").innerHTML += Object.keys(STATUS).map(s => `<option>${s}</option>`).join("");
+  $("scenarios").innerHTML = L.scenarios.map((s, i) => `
+    <div class="sc"><div class="num">${i + 1}</div><div style="flex:1"><b>${esc(s.title)}</b>
+      <div class="note">${esc(s.story)}</div>
+      <div class="row" style="margin-top:4px"><button class="small primary" onclick="scenario('${s.id}')">Jump here</button>
+      <button class="small" onclick="showBag('${s.other || s.bag}')">Bag ${s.other || s.bag}</button></div></div></div>`).join("");
+  $("gate").innerHTML = L.nodes.filter(n => n.kind === "makeup").map(n => `<option value="${n.id}">${n.id} - ${n.flight.flight}</option>`).join("");
+  $("gate").value = "GA4";
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + b.dataset.tab));
+    if (b.dataset.tab === "passenger") loadDemoPassengers();
+  });
+  $("play").onclick = () => post("/api/control", { cmd: S && S.playing ? "pause" : "play" });
+  $("speed").onchange = (e) => post("/api/control", { cmd: "speed", value: +e.target.value });
+  $("timeline").onchange = async (e) => { $("busy").textContent = "Jumping..."; $("busy").classList.add("on");
+    try { await post("/api/control", { cmd: "seek", value: +e.target.value }); } finally { $("busy").classList.remove("on"); } };
+  $("restart").onclick = () => post("/api/control", { cmd: "restart" });
+  $("filter").onchange = renderBags; $("search").oninput = renderBags;
+  drawLiveBase();
+  $("ltthrm").onchange = (e) => post("/api/laptops/threshold", { meters: +e.target.value });
+  $("ltlaptop").onchange = (e) => post("/api/laptops/select", { id: e.target.value });
+  if (L.mode === "real") document.querySelector('nav button[data-tab="live"]').click();
+  if (location.hash === "#room") document.querySelector('nav button[data-tab="room"]').click();  // open /#room straight on the room demo
+  roomSetup();
+  loop(); feedLoop(); liveLoop(); roomLoop();
+}
+
+// ---------------------------------------------------------------- the baggage-hall map
+// Drawn like a baggage-system schematic: checkpoints (one BLE receiver + zone each) are squares,
+// laid out left to right by stage (check-in / transfer input -> sortation -> transport spine ->
+// make-up lanes + belt loaders). Conveyor belts only run horizontally and vertically, each in its
+// own lane, with rollers that move in the belt's direction. Bags ride along those belts where the
+// simulation says they physically are, coloured by AutoTrack's status. The red outline shows the
+// zone AutoTrack THINKS the selected bag is in (from the noisy Bluetooth signal).
+const SQ = 46, HS = SQ / 2;   // checkpoint square size / half size (map units)
+let NODES = {}, ROUTES = {};
+
+function laneKey(a, b) { return a + ">" + b; }
+
+// Is point range (a vertical run at x from y0 to y1) clear of every checkpoint square except a, c?
+function vClear(x, y0, y1, skip) {
+  return !Object.values(NODES).some(n => !skip.includes(n.id) && Math.abs(n.x - x) < HS + 7
+    && Math.max(y0, y1) > n.y - HS - 7 && Math.min(y0, y1) < n.y + HS + 7);
+}
+function hClear(y, x0, x1, skip) {
+  return !Object.values(NODES).some(n => !skip.includes(n.id) && Math.abs(n.y - y) < HS + 7
+    && Math.max(x0, x1) > n.x - HS - 7 && Math.min(x0, x1) < n.x + HS + 7);
+}
+
+function buildRoutes() {
+  NODES = Object.fromEntries(L.nodes.map(n => [n.id, { ...n, x: n.sx, y: n.sy }]));
+  ROUTES = {};
+  // 1. Which side of each square a belt leaves from / arrives at.
+  const belts = L.belts.map(b => {
+    const a = NODES[b.from], c = NODES[b.to], dx = c.x - a.x, dy = c.y - a.y;
+    let type = Math.abs(dx) >= 40 ? "h" : "v", exit, entry;
+    if (type === "h") { exit = dx > 0 ? "R" : "L"; entry = dx > 0 ? "L" : "R"; }
+    else { exit = dy > 0 ? "B" : "T"; entry = dy > 0 ? "T" : "B"; }
+    if (type === "v" && !vClear(a.x, a.y, c.y, [a.id, c.id])) { type = "d"; exit = entry = "L"; }  // go round the side
+    return { ...b, a, c, type, exit, entry, key: b.from + b.to };
+  });
+  // 2. Spread the belts using the same side of a square along that side (sorted to avoid crossings).
+  const sides = {};
+  for (const b of belts) {
+    (sides[b.from + b.exit] ||= []).push({ b, end: "exit", other: b.c });
+    (sides[b.to + b.entry] ||= []).push({ b, end: "entry", other: b.a });
+  }
+  for (const [k, list] of Object.entries(sides)) {
+    const side = k.slice(-1), vertSide = side === "L" || side === "R";
+    list.sort((p, q) => (vertSide ? p.other.y - q.other.y : p.other.x - q.other.x) || (p.b.key < q.b.key ? -1 : 1));
+    const step = Math.min(12, 38 / list.length);
+    list.forEach((p, i) => {
+      const off = (i - (list.length - 1) / 2) * step, n = p.end === "exit" ? p.b.a : p.b.c;
+      const pt = side === "R" ? [n.x + HS, n.y + off] : side === "L" ? [n.x - HS, n.y + off]
+               : side === "B" ? [n.x + off, n.y + HS] : [n.x + off, n.y - HS];
+      p.b[p.end === "exit" ? "p0" : "p3"] = pt;
+    });
+  }
+  // 3. Give every belt that needs a bend its own vertical (or horizontal) channel.
+  const vRuns = [], hRuns = [];
+  const needV = belts.filter(b => (b.type === "h" || b.type === "d") && Math.abs(b.p0[1] - b.p3[1]) > 0.5);
+  needV.sort((p, q) => Math.abs(p.p0[1] - p.p3[1]) - Math.abs(q.p0[1] - q.p3[1]));
+  for (const b of needV) {
+    const y0 = b.p0[1], y1 = b.p3[1];
+    let lo, hi, pref;
+    if (b.type === "h") { lo = Math.min(b.p0[0], b.p3[0]) + 9; hi = Math.max(b.p0[0], b.p3[0]) - 9; pref = (lo + hi) / 2; }
+    else { hi = Math.min(b.p0[0], b.p3[0]) - 12; lo = 100; pref = hi - 6; }
+    let cx = pref;
+    for (let k = 0; k < 80; k++) {
+      const cand = pref + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 9 * (b.type === "d" ? -1 : 1);
+      if (cand < lo || cand > hi) continue;
+      const free = vRuns.every(r => Math.abs(r.x - cand) >= 8 || Math.max(y0, y1) < Math.min(r.y0, r.y1) - 6 || Math.min(y0, y1) > Math.max(r.y0, r.y1) + 6);
+      if (free && vClear(cand, y0, y1, [b.from, b.to])) { cx = cand; break; }
+    }
+    vRuns.push({ x: cx, y0, y1 });
+    b.pts = [b.p0, [cx, y0], [cx, y1], b.p3];
+  }
+  for (const b of belts.filter(b => b.type === "v" && Math.abs(b.p0[0] - b.p3[0]) > 0.5)) {
+    const cy = (b.p0[1] + b.p3[1]) / 2;
+    hRuns.push({ y: cy }); b.pts = [b.p0, [b.p0[0], cy], [b.p3[0], cy], b.p3];
+  }
+  for (const b of belts) {
+    if (!b.pts) b.pts = [b.p0, b.p3];
+    const cum = [0];
+    for (let i = 1; i < b.pts.length; i++) cum.push(cum[i - 1] + Math.hypot(b.pts[i][0] - b.pts[i - 1][0], b.pts[i][1] - b.pts[i - 1][1]));
+    ROUTES[laneKey(b.from, b.to)] = { from: b.from, to: b.to, pts: b.pts, cum, len: cum[cum.length - 1] || 1 };
+  }
+}
+
+function drawMapBase() {
+  buildRoutes();
+  const pts = (r) => r.pts.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ");
+  let s = `<g id="belts">`;
+  for (const r of Object.values(ROUTES)) s += `<polyline class="belt-edge" points="${pts(r)}"/>`;
+  for (const r of Object.values(ROUTES)) {
+    s += `<polyline class="belt" id="belt-${r.from}-${r.to}" points="${pts(r)}"><title>Conveyor ${r.from} → ${r.to}</title></polyline>
+          <polyline class="belt-rollers" id="rollers-${r.from}-${r.to}" points="${pts(r)}"/>`;
+    // a direction chevron in the middle of the longest straight piece
+    let best = 1, bl = 0;
+    for (let i = 1; i < r.pts.length; i++) { const l = r.cum[i] - r.cum[i - 1]; if (l > bl) { bl = l; best = i; } }
+    if (bl > 30) {
+      const [x0, y0] = r.pts[best - 1], [x1, y1] = r.pts[best], ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+      s += `<path class="belt-chevron" d="M-4,-4 L3,0 L-4,4 Z" transform="translate(${(x0 + x1) / 2},${(y0 + y1) / 2}) rotate(${ang})"/>`;
+    }
+  }
+  s += `</g><g id="rings"></g><g id="zones">`;
+  for (const n of Object.values(NODES)) {
+    const dark = n.kind === "makeup";
+    s += `<g class="zone" onclick="filterZone('${n.id}')" style="cursor:pointer"><title>${esc(n.name)}</title>
+      <rect class="cp-shadow" x="${n.x - HS + 4}" y="${n.y - HS + 4}" width="${SQ}" height="${SQ}"/>
+      <rect class="cp k-${n.kind}" x="${n.x - HS}" y="${n.y - HS}" width="${SQ}" height="${SQ}"/>
+      <text class="cp-text${dark ? " on-dark" : ""}" x="${n.x}" y="${n.y - 5}">${n.id}</text>
+      <g id="occ-${n.id}" style="display:none"><rect class="cp-count-bg" x="${n.x + HS - 9}" y="${n.y - HS - 9}" width="18" height="16"/>
+        <text class="cp-count" x="${n.x + HS}" y="${n.y - HS + 3}" text-anchor="middle"></text></g>`;
+    if (n.flight) s += `<text class="flight-label" x="${n.x + HS + 8}" y="${n.y + 4}">${n.flight.flight}</text>
+      <rect class="lamp green" id="lamp-${n.id}" x="${n.x - 4}" y="${n.y + HS + 4}" width="16" height="7" transform="translate(-4,0)"/>`;
+    s += `</g>`;
+  }
+  s += `</g><g id="dots"></g><g id="fallen"></g>`;
+  $("map").innerHTML = s;
+  $("map").setAttribute("viewBox", "20 10 1010 740");
+}
+
+// ---------- bags riding the belts
+// For each bag we remember where it was drawn and animate it to the newest position along the
+// belt route (through the checkpoint square if it moved onto the next belt), every animation frame.
+const bagAnim = new Map();   // bag id -> {g, at: [from, to, frac], path, t0, dur}
+
+function lanePoint(from, to, frac, id) {
+  const r = ROUTES[laneKey(from, to)];
+  if (from === to || !r) {                 // waiting in a square (make-up lane): bottom half, under its name
+    const n = NODES[from]; if (!n) return null;
+    let hsh = 0; for (const ch of id) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    return [n.x + ((hsh % 5) - 2) * 8, n.y + 13, 0];
+  }
+  // frac 0 = centre of the start square, 1 = centre of the end square: walk the square, the belt, the square
+  const a = NODES[from], c = NODES[to];
+  const legs = [[a.x, a.y], ...r.pts, [c.x, c.y]];
+  const cum = [0];
+  for (let i = 1; i < legs.length; i++) cum.push(cum[i - 1] + Math.hypot(legs[i][0] - legs[i - 1][0], legs[i][1] - legs[i - 1][1]));
+  const d = Math.max(0, Math.min(1, frac)) * cum[cum.length - 1];
+  for (let i = 1; i < legs.length; i++) {
+    if (d <= cum[i] || i === legs.length - 1) {
+      const l = cum[i] - cum[i - 1] || 1, t = (d - cum[i - 1]) / l;
+      const [x0, y0] = legs[i - 1], [x1, y1] = legs[i];
+      return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI];
+    }
+  }
+}
+
+function planPath(at, to) {
+  // A list of [from, to, f0, f1] legs from position `at` to position `to`, along the belts.
+  const [a1, a2, af] = at, [b1, b2, bf] = to;
+  if (a1 === b1 && a2 === b2) return bf >= af ? [[a1, a2, af, bf]] : null;      // same belt, forward
+  if (a1 === a2) return a1 === b1 ? [[b1, b2, 0, bf]] : null;                    // left a square onto a belt
+  if (b1 === b2) return a2 === b1 ? [[a1, a2, af, 1]] : null;                    // reached the next square
+  if (a2 === b1) return [[a1, a2, af, 1], [b1, b2, 0, bf]];                      // onto the next belt
+  if (ROUTES[laneKey(a2, b1)]) return [[a1, a2, af, 1], [a2, b1, 0, 1], [b1, b2, 0, bf]]; // skipped one belt
+  return null;                                                                    // can't tell: jump
+}
+
+function setBagXY(A, p) {
+  if (!p) return;
+  A.g.setAttribute("transform", `translate(${p[0].toFixed(1)},${p[1].toFixed(1)})`);
+  A.g.firstElementChild.setAttribute("transform", `rotate(${Math.round(p[2] || 0)})`);
+}
+
+function placeBag(id, b) {
+  let A = bagAnim.get(id);
+  if (!A) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.innerHTML = `<rect class="bag" x="-7" y="-5" width="14" height="10" style="cursor:pointer"><title></title></rect>
+                   <text class="bag-label" x="12" y="-10"></text>`;
+    g.firstElementChild.onclick = () => showBag(id);
+    $("dots").appendChild(g);
+    A = { g, at: b.belt, path: null };
+    bagAnim.set(id, A);
+    setBagXY(A, lanePoint(b.belt[0], b.belt[1], b.belt[2], id));
+  } else if (A.at.join() !== b.belt.join()) {
+    const path = planPath(A.at, b.belt);
+    A.path = path ? path.map(([f, t, f0, f1]) => ({ f, t, f0, f1, len: Math.max(1, (ROUTES[laneKey(f, t)] || { len: 1 }).len * (f1 - f0)) })) : null;
+    if (!path) setBagXY(A, lanePoint(b.belt[0], b.belt[1], b.belt[2], id));
+    A.t0 = performance.now(); A.dur = POLL_MS * 1.1; A.at = b.belt;
+  }
+  return A;
+}
+
+function stepBags(now) {
+  for (const [id, A] of bagAnim) {
+    if (!A.path) continue;
+    const total = A.path.reduce((s, leg) => s + leg.len, 0);
+    let d = Math.min(1, (now - A.t0) / A.dur) * total, leg = A.path[A.path.length - 1], f = leg.f1;
+    for (const L2 of A.path) { if (d <= L2.len) { leg = L2; f = L2.f0 + (L2.f1 - L2.f0) * (d / L2.len); break; } d -= L2.len; }
+    setBagXY(A, lanePoint(leg.f, leg.t, f, id));
+    if (now - A.t0 >= A.dur) A.path = null;
+  }
+}
+function animateBags(now) { stepBags(now); requestAnimationFrame(animateBags); }
+requestAnimationFrame(animateBags);
+
+function filterZone(z) { $("search").value = z; renderBags(); }
+
+// ---------------------------------------------------------------- live updates
+async function loop() {
+  try { S = await get("/api/state"); render(); } catch (e) { console.warn(e); }
+  setTimeout(loop, POLL_MS);
+}
+
+function render() {
+  $("clock").textContent = S.clock;
+  $("phase").textContent = S.phase;
+  $("mode").textContent = S.mode === "real" ? "REAL BLE + SIM" : "SIMULATION";
+  $("mode").style.background = S.mode === "real" ? "#E3141B" : "#44474F";
+  $("play").textContent = S.playing ? "Pause" : "Play";
+  if (document.activeElement !== $("speed")) $("speed").value = String(S.speed);
+  if (document.activeElement !== $("timeline")) $("timeline").value = S.t;
+  $("busy").textContent = S.busy || ""; $("busy").classList.toggle("on", !!S.busy);
+  // tiles
+  $("tiles").innerHTML = Object.entries(S.counts).map(([k, v]) =>
+    `<div class="tile" onclick="$('filter').value='${k}';renderBags()" style="${v && k !== "ON TRACK" ? `color:${STATUS_TEXT(k)}` : ""}">
+     <b>${v}</b><span>${k}</span></div>`).join("");
+  // alerts
+  $("nalerts").textContent = `(${S.alerts.length})`;
+  $("alerts").innerHTML = S.alerts.length ? S.alerts.map(alertHtml).join("") : `<div class="note">No active alerts.</div>`;
+  // fleet
+  const f = S.tags;
+  $("fleet").innerHTML = [["in_use", "on bags"], ["in_return_bins", "in return bins"], ["charging", "charging"],
+    ["available", "ready"], ["returned_total", "returned"]].map(([k, l]) => `<div><b>${f[k]}</b><span>${l}</span></div>`).join("");
+  renderMap();
+  renderBags();
+  renderLoader();
+  if (openBag && (++drawerTick % 6 === 0)) refreshBag();
+  $("phase").style.background = S.t >= S.total ? "#E3141B" : "";
+  if (S.t >= S.total && !(S.live && S.live.id)) $("phase").textContent = "hour finished - press Restart";
+}
+let drawerTick = 0;
+
+function actionsFor(a) {
+  const b = (act, label, cls = "") => `<button class="small ${cls}" onclick="act('${a.bag}','${act}')">${label}</button>`;
+  switch (a.status) {
+    case "MISROUTED": case "WRONG AIRCRAFT": return b("pull", "Pull bag & re-send", "primary");
+    case "IDENTITY REVIEW": return b("approve", "Approve: same bag") + b("security", "Hold for security", "primary");
+    case "IDENTITY FLAG": return b("security", "Call security (hold)", "primary") + b("approve", "Approve after inspection");
+    case "TAG NOT RETURNED": return b("recover", "Tag recovered", "primary");
+    default: return b("ack", "Acknowledge");
+  }
+}
+function alertHtml(a) {
+  const c = STATUS[a.status];
+  const urgent = ["WRONG AIRCRAFT", "IDENTITY FLAG"].includes(a.status);
+  return `<div class="alert ${urgent ? "flash" : ""}" style="border-color:${c}">
+    <div class="row" style="justify-content:space-between">${pill(a.status)}
+      <span class="note mono">${a.clock}${a.gate ? " &middot; " + a.gate : ""}</span></div>
+    <div style="margin-top:4px"><a href="#" onclick="showBag('${a.bag}');return false"><b>${a.bag}</b></a> ${esc(a.reason)}</div>
+    ${a.ack ? `<div class="note">Acknowledged by ${esc(a.ack)}</div>` : ""}
+    <div class="acts">${actionsFor(a)}</div></div>`;
+}
+async function act(bag, action) {
+  const who = document.querySelector("#tab-loader.on") ? "loader " + $("gate").value : "ops";
+  await post("/api/action", { bag, action, who });
+}
+
+function renderMap() {
+  for (const n of L.nodes) {
+    const o = S.occupancy[n.id], g = $("occ-" + n.id);
+    g.style.display = o ? "" : "none"; if (o) g.lastElementChild.textContent = o;
+    if (n.kind === "makeup") $("lamp-" + n.id).setAttribute("class", "lamp " + (S.loaders[n.id].light || "green"));
+  }
+  // conveyors: rollers move while the clock runs; a jammed belt turns red and stops
+  $("map").classList.toggle("paused", !S.playing || S.t >= S.total);
+  document.querySelectorAll("#belts .jam").forEach(e => e.classList.remove("jam"));
+  for (const j of S.jams) { $(`belt-${j.from}-${j.to}`)?.classList.add("jam"); $(`rollers-${j.from}-${j.to}`)?.classList.add("jam"); }
+  // outline the zone AutoTrack thinks the selected bag is in (solid) and the nearby zones (dashed)
+  const fb = S.bags.find(b => b.id === (openBag || S.follow));
+  let r = "";
+  if (fb && fb.zone && NODES[fb.zone]) {
+    const n = NODES[fb.zone], h = HS + 9;
+    r += `<rect class="ring-primary" x="${n.x - h}" y="${n.y - h}" width="${2 * h}" height="${2 * h}"/>`;
+    for (const z of fb.nearby || []) {
+      const m = NODES[z.zone]; if (!m) continue; const h2 = HS + 6;
+      r += `<rect class="ring-near" x="${m.x - h2}" y="${m.y - h2}" width="${2 * h2}" height="${2 * h2}" opacity="${z.strength === "strong" ? .9 : z.strength === "medium" ? .6 : .35}"/>`;
+    }
+  }
+  $("rings").innerHTML = r;
+  // bags on the belts
+  const seen = new Set();
+  for (const b of S.bags) {
+    if (!b.belt) continue;
+    seen.add(b.id);
+    const A = placeBag(b.id, b), big = fb && fb.id === b.id, rect = A.g.firstElementChild;
+    const w = big ? 20 : b.status === "ON TRACK" ? 13 : 16, h = Math.round(w * 0.7);
+    rect.setAttribute("x", -w / 2); rect.setAttribute("y", -h / 2); rect.setAttribute("width", w); rect.setAttribute("height", h);
+    rect.setAttribute("fill", STATUS[b.status]);
+    rect.setAttribute("class", "bag" + (big ? " followed" : ""));
+    rect.firstElementChild.textContent = `${b.id} ${b.status}`;
+    A.g.lastElementChild.textContent = big ? b.id : "";
+    if (big) $("dots").appendChild(A.g);  // draw the selected bag on top
+  }
+  for (const [id, A] of bagAnim) if (!seen.has(id)) { A.g.remove(); bagAnim.delete(id); }
+  // BLE tags that fell off, lying next to the checkpoint where they dropped
+  let d = "";
+  for (const t of S.fallen_tags) {
+    const n = NODES[t.zone]; if (!n) continue;
+    const x = n.x - HS - 12, y = n.y - HS - 6;
+    d += `<g><path class="fallen" d="M${x - 6},${y - 6} L${x + 6},${y + 6} M${x + 6},${y - 6} L${x - 6},${y + 6}"/>
+          <text class="fallen-text" x="${x - 4}" y="${y - 10}">${t.tag} lying here</text></g>`;
+  }
+  $("fallen").innerHTML = d;
+}
+
+function renderBags() {
+  if (!S) return;
+  const f = $("filter").value, q = $("search").value.trim().toUpperCase();
+  const rows = S.bags.filter(b => (!f || b.status === f) &&
+    (!q || [b.id, b.plate, b.flight, b.zone, b.tag].join(" ").toUpperCase().includes(q)));
+  $("nbags").textContent = `(${S.active} in the hall${rows.length !== S.bags.length ? `, ${rows.length} shown` : ""})`;
+  $("bags").querySelector("tbody").innerHTML = rows.slice(0, 150).map(b => `
+    <tr class="click" onclick="showBag('${b.id}')"><td><b>${b.id}</b>${b.transfer ? ' <span class="note">transfer</span>' : ""}<br><span class="note mono">${b.plate}</span></td>
+    <td>${pill(b.status)}</td>
+    <td>${esc(b.zone_name)}<br><span class="note">${(b.nearby || []).map(n => `${n.zone} (${n.strength})`).join(", ")}</span></td>
+    <td>${esc(b.flight)}<br><span class="note">lane ${b.booked_gate}</span></td>
+    <td class="note">${esc(b.reason)}</td></tr>`).join("");
+}
+
+async function beep(mode) { const r = await post("/api/live/beep", { mode }); if (!r.ok) alert(r.error || "Tag did not accept the command (see the server window)."); }
+
+// ---------------------------------------------------------------- live ESP32 (stay near the checkpoint)
+const LT = { maxM: 7, x0: 130, x1: 960, y: 140 };
+const ltX = (m) => LT.x0 + Math.min(m, LT.maxM) / LT.maxM * (LT.x1 - LT.x0);
+function drawLiveBase() {
+  // Same look as the hall map: the distance track is a gray "belt" column, the tag a square.
+  let s = `<rect class="lt-good" id="ltgood" x="${LT.x0}" y="${LT.y - 45}" width="0" height="90"/>
+    <rect class="lt-bad" id="ltbad" x="0" y="${LT.y - 45}" width="0" height="90"/>
+    <line class="lt-track-edge" x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}"/>
+    <line class="lt-track" x1="${LT.x0}" y1="${LT.y}" x2="${LT.x1}" y2="${LT.y}"/>`;
+  for (let m = 0; m <= LT.maxM; m++) {
+    s += `<line class="lt-tick" x1="${ltX(m)}" y1="${LT.y + 45}" x2="${ltX(m)}" y2="${LT.y + 55}" stroke="#1C1D20" stroke-width="2"/>
+      <text class="lt-ticktext" x="${ltX(m)}" y="${LT.y + 72}" text-anchor="middle">${m} m${m === LT.maxM ? "+" : ""}</text>`;
+  }
+  // the laptop = the checkpoint
+  s += `<g transform="translate(40, ${LT.y - 32})"><rect class="lt-laptop" x="0" y="0" width="70" height="44"/>
+      <rect class="lt-screen" x="6" y="6" width="58" height="32"/><rect class="lt-laptop" x="-8" y="46" width="86" height="8"/></g>
+    <text class="lt-label" x="75" y="${LT.y + 46}" text-anchor="middle">LAPTOP</text>
+    <text class="lt-ticktext" x="75" y="${LT.y + 62}" text-anchor="middle">(checkpoint)</text>
+    <line class="lt-thr" id="ltthrline" x1="0" y1="${LT.y - 60}" x2="0" y2="${LT.y + 45}"/>
+    <text class="lt-thrtext" id="ltthrtext" x="0" y="${LT.y - 66}" text-anchor="middle"></text>
+    <rect class="lt-range" id="ltrange" x="0" y="${LT.y - 9}" width="0" height="18"/>
+    <g id="lttag" style="transform: translate(${LT.x0}px, ${LT.y}px)">
+      <rect class="lt-body" x="-19" y="-19" width="38" height="38" fill="#2563EB"/>
+      <text class="lt-bodytext" y="4" text-anchor="middle">ESP</text>
+      <text class="lt-label" id="lttaglabel" y="-30" text-anchor="middle"></text>
+    </g>`;
+  $("ltmap").innerHTML = s;
+}
+const LTSTATE = { ok: ["IN RANGE", "#1F9D55"], too_far: ["TOO FAR - tag flashing", "#E3141B"],
+                  lost: ["LOST - no signal", "#E3141B"], no_tag: ["waiting for tag", "#5E626B"] };
+async function liveLoop() {
+  try {
+    if (document.querySelector("#tab-live.on")) renderLiveTag(await get("/api/livetag"));
+  } catch (e) { console.warn(e); }
+  setTimeout(liveLoop, 300);
+}
+function renderLiveTag(d) {
+  $("ltbadge").textContent = !d.real ? "not in real mode" : d.error ? "Bluetooth error" : d.scanning ? "Bluetooth scanning" : "starting";
+  $("ltbadge").style.background = d.real && d.scanning && !d.error ? "#1F9D55" : "#E3141B";
+  $("lthelp").innerHTML = !d.real
+    ? `Start AutoTrack with <span class="mono">.venv\\Scripts\\python run.py --mode real</span> to use the ESP32.`
+    : `Your laptop is the checkpoint. It measures how strongly it hears the ESP32 (RSSI): on ${esc(d.laptops.profile.name)}'s laptop about ${Math.round(d.curve.rssi_1m)} dBm is 1 m, and below ${Math.round(d.threshold_dbm)} dBm (${d.threshold_m} m) the tag is too far and flashes red.
+       Distance is a rough estimate from signal strength (bodies, walls and how you hold the board change it a lot), so the blue band shows the likely range.`
+    + (d.error ? `<br><span style="color:var(--red)">${esc(d.error)}</span>` : "");
+  renderLaptops(d);
+  // zones + threshold
+  const tx = ltX(d.threshold_m);
+  $("ltgood").setAttribute("width", tx - LT.x0);
+  $("ltbad").setAttribute("x", tx); $("ltbad").setAttribute("width", Math.max(0, LT.x1 + 30 - tx));
+  $("ltthrline").setAttribute("x1", tx); $("ltthrline").setAttribute("x2", tx);
+  $("ltthrtext").setAttribute("x", tx); $("ltthrtext").textContent = `${Math.round(d.threshold_dbm)} dBm \u2248 ${d.threshold_m.toFixed(1)} m`;
+  // the tag
+  const [label, col] = LTSTATE[d.state] || LTSTATE.no_tag;
+  const has = d.distance_m != null && d.state !== "lost";
+  const m = has ? d.distance_m : LT.maxM;
+  $("lttag").style.transform = `translate(${ltX(m)}px, ${LT.y}px)`;
+  $("lttag").firstElementChild.setAttribute("fill", col);
+  $("lttag").classList.toggle("flash", d.state === "too_far" || d.state === "lost");
+  $("lttaglabel").textContent = has ? `${Math.round(d.rssi)} dBm` : (d.state === "lost" ? "no signal" : "");
+  if (has) { const lo = ltX(m / 1.5), hi = ltX(m * 1.5); $("ltrange").setAttribute("x", lo); $("ltrange").setAttribute("width", hi - lo); }
+  else $("ltrange").setAttribute("width", 0);
+  $("ltrssi").textContent = d.rssi == null ? "--" : `${Math.round(d.rssi)} dBm`;
+  $("ltdist").textContent = has ? `~${d.distance_m < 1 ? Math.round(d.distance_m * 100) + " cm" : d.distance_m.toFixed(1) + " m"}` : "--";
+  $("ltstate").textContent = label; $("ltstate").style.color = col;
+  // signal over the last 60 s
+  const W = 1000, H = 140, yOf = (r) => 10 + (Math.max(-90, Math.min(-10, r)) + 10) / -80 * (H - 20), xOf = (ago) => W + ago / 60 * W;
+  let sp = "";
+  for (const r of [-20, -40, -60, -80]) sp += `<line x1="0" y1="${yOf(r)}" x2="${W}" y2="${yOf(r)}" stroke="#c9ceda"/><text x="6" y="${yOf(r) - 3}" font-size="11" fill="#44474F">${r} dBm</text>`;
+  sp += `<line x1="0" y1="${yOf(d.threshold_dbm)}" x2="${W}" y2="${yOf(d.threshold_dbm)}" stroke="#E3141B" stroke-width="2" stroke-dasharray="8 6"/>`;
+  if (d.history.length > 1) sp += `<polyline fill="none" stroke="#1C1D20" stroke-width="3" points="${d.history.map(([a, r]) => `${xOf(a).toFixed(1)},${yOf(r).toFixed(1)}`).join(" ")}"/>`;
+  $("ltspark").innerHTML = sp;
+  $("ltevents").innerHTML = d.events.length ? d.events.map(e => `<div>${e.ago_s} s ago: ${esc(e.text)}</div>`).join("") : "Nothing yet.";
+}
+// ---------------------------------------------------------------- per-laptop calibration
+function renderLaptops(d) {
+  const LP = d.laptops, p = LP.profile, sel = $("ltlaptop");
+  if (document.activeElement !== sel) {
+    const opts = LP.list.map(x => `<option value="${esc(x.id)}">${esc(x.name)}${x.calibrated ? "" : " (not calibrated)"}</option>`).join("");
+    if (sel.dataset.opts !== opts) { sel.innerHTML = opts; sel.dataset.opts = opts; }
+    sel.value = LP.active;
+  }
+  $("ltcurve").textContent = (p.calibrated ? "Calibrated" : "Not calibrated yet, using Alex's numbers")
+    + `: 1 m = ${p.rssi_1m.toFixed(1)} dBm, n = ${p.n.toFixed(2)}`;
+  $("ltcurve").style.color = p.calibrated ? "" : "var(--red)";
+  if (document.activeElement !== $("ltthrm")) $("ltthrm").value = p.threshold_m;
+  $("ltthrdbm").textContent = `= ${Math.round(p.threshold_dbm)} dBm on ${p.name}'s laptop`;
+  $("ltcalsum").textContent = `(${p.name}: ${p.points.length} measurement${p.points.length === 1 ? "" : "s"})`;
+  const m = d.measuring, btn = $("ltcalbtn");
+  btn.disabled = !!m || !d.real;
+  btn.textContent = m ? `Measuring... ${Math.ceil(m.left_s)} s (${m.packets} packets) - keep still` : "Measure (8 s)";
+  const rows = p.points.map((q, i) => `<tr><td>${q.d} m</td><td class="mono">${q.rssi.toFixed(1)} dBm</td>
+      <td class="note">curve says ${q.fit_rssi.toFixed(1)} (${(q.rssi - q.fit_rssi >= 0 ? "+" : "") + (q.rssi - q.fit_rssi).toFixed(1)})</td>
+      <td class="note">${q.samples ? q.samples + " packets" : "typed in"}</td>
+      <td><button class="small" onclick="deletePoint(${i})">Remove</button></td></tr>`).join("");
+  const html = p.points.length
+    ? `<table><tr><th>Distance</th><th>Measured</th><th>Fit</th><th></th><th></th></tr>${rows}</table><div class="note">${esc(p.note)}</div>`
+    : `<div class="note">No measurements for ${esc(p.name)}'s laptop yet.</div>`;
+  if ($("ltpoints").dataset.html !== html) { $("ltpoints").innerHTML = html; $("ltpoints").dataset.html = html; }
+}
+async function addLaptop() {
+  const name = $("ltnewname").value.trim();
+  if (!name) { $("ltnewname").focus(); return; }
+  await post("/api/laptops/select", { name });
+  $("ltnewname").value = "";
+  $("ltcal").open = true;
+}
+async function measurePoint() {
+  const d = +$("ltcald").value;
+  $("ltcalmsg").textContent = "";
+  const r = await post("/api/laptops/measure", { distance_m: d, seconds: 8 });
+  $("ltcalmsg").textContent = r.ok ? `${d} m: ${r.rssi} dBm (${r.packets} packets, spread ${r.spread_db} dB)` : r.error || r.detail || "failed";
+  $("ltcalmsg").style.color = r.ok ? "" : "var(--red)";
+}
+async function addManualPoint() {
+  const d = +$("ltcald").value, v = $("ltcalman").value.trim();
+  if (v === "" || isNaN(+v)) { $("ltcalman").focus(); return; }
+  const r = await post("/api/laptops/point/add", { distance_m: d, rssi: -Math.abs(+v) });
+  $("ltcalmsg").textContent = r.ok ? `${d} m: ${-Math.abs(+v)} dBm added` : r.detail || "failed";
+  $("ltcalmsg").style.color = r.ok ? "" : "var(--red)";
+  if (r.ok) $("ltcalman").value = "";
+}
+async function deletePoint(i) { await post("/api/laptops/point/delete", { index: i }); }
+async function clearPoints() {
+  if (confirm("Delete all calibration measurements for this laptop?")) await post("/api/laptops/clear", {});
+}
+
+async function scenario(id) {
+  const sc = L.scenarios.find(s => s.id === id);
+  $("busy").textContent = "Jumping to: " + sc.title + "..."; $("busy").classList.add("on");
+  try { await post("/api/control", { cmd: "scenario", value: id, speed: 2 }); }
+  finally { $("busy").classList.remove("on"); }
+  showBag(sc.other || sc.bag);
+}
+
+// ---------------------------------------------------------------- bag drawer
+async function showBag(id) { openBag = id; $("drawer").classList.add("on"); post("/api/control", { cmd: "follow", value: id }); refreshBag(); }
+function closeBag() { openBag = null; $("drawer").classList.remove("on"); }
+async function refreshBag() {
+  let b; try { b = await get("/api/bag/" + openBag); } catch { $("drawer").innerHTML = `<button onclick="closeBag()">Close</button><p>Bag ${esc(openBag)} not checked in yet.</p>`; return; }
+  const ph = b.photo;
+  const photo = ph && ph.verdict !== "not_run"
+    ? `<h3 style="margin-top:12px">SecureBag photo check: ${esc(ph.verdict.toUpperCase())}</h3>
+       <div class="note">Real bag_compare.verify_bags() result on sample pair <b>${esc(ph.pair)}</b>: combined score ${ph.score}, ${esc(ph.reason)}. Decision support only - a human decides.</div>
+       <div class="photos" style="margin-top:6px"><div><img src="/static/${ph.image_a}" alt="check-in photo"><div class="note">Check-in photo</div></div>
+       <div><img src="/static/${ph.image_b}" alt="loader camera photo"><div class="note">Belt-loader camera</div></div></div>`
+    : `<div class="note" style="margin-top:8px">Photo check: ${ph ? esc(ph.reason) : "runs at the belt loader"}</div>`;
+  const sig = (b.signals || []).map(s => `<div class="row" style="gap:6px"><span class="mono" style="width:42px">${s.zone}</span>
+    <div class="bar" style="flex:1"><i style="width:${Math.max(0, Math.min(100, (s.rssi + 100) * 2))}%"></i></div><span class="mono note">${s.rssi} dBm</span></div>`).join("");
+  $("drawer").innerHTML = `
+    <div class="row" style="justify-content:space-between"><h2>${esc(b.id)}</h2><button onclick="closeBag()">Close</button></div>
+    <div style="margin:8px 0">${pill(b.status)}</div>
+    <div class="alert" style="border-color:${STATUS[b.status]}">${esc(b.reason)}</div>
+    ${S.alerts.filter(a => a.bag === b.id).map(a => `<div class="acts row">${actionsFor(a)}</div>`).join("")}
+    <div class="kv">
+      <div>Bag tag number</div><div class="mono">${esc(b.plate)}</div>
+      <div>Flight</div><div>${esc(b.flight)} to ${esc(b.destination)} (lane ${b.booked_gate})</div>
+      <div>BLE tag</div><div class="mono">${esc(b.tag)}${b.tag_detached ? " (fell off at " + b.tag_detached + ")" : ""}</div>
+      <div>Primary zone</div><div><b>${esc(b.zone_name)}</b></div>
+      <div>Nearby zones</div><div>${(b.nearby || []).map(n => `${n.zone} (${n.strength})`).join(", ") || "-"}</div>
+      <div>Position estimate</div><div>${b.centroid ? `x ${b.centroid[0]} m, y ${b.centroid[1]} m (weighted centroid, ~2-5 m)` : "-"}</div>
+      <div>Cut-off</div><div>${b.deadline_clock || "none"}</div>
+      <div>Check-in weight</div><div>${b.weight} kg</div>
+      <div>Booking ref</div><div class="mono">${esc(b.booking_ref)}</div>
+      <div>Type</div><div>${b.transfer ? "Transfer bag (tagged at transfer input)" : "Origin bag (tagged at bag drop)"}</div>
+    </div>
+    ${sig ? `<h3>BLE signal per receiver (smoothed)</h3><div style="margin:6px 0">${sig}</div>` : ""}
+    ${photo}
+    <h3 style="margin:14px 0 6px">History</h3>
+    <div class="hist">${b.history.slice().reverse().map(h => `<div><span class="mono note">${h.clock}</span> ${esc(h.text)}</div>`).join("")}</div>`;
+}
+
+// ---------------------------------------------------------------- loader handheld
+function renderLoader() {
+  const g = $("gate").value, l = S.loaders[g], f = S.flights[g];
+  $("lflight").textContent = `Serving ${f.flight} to ${f.to} - closes ${clockOf(f.closes)}`;
+  const light = $("llight");
+  light.className = "light " + l.light;
+  light.textContent = { red: "STOP", amber: "HOLD", green: "OK" }[l.light] || "";
+  $("lmsg").textContent = l.msg;
+  $("lpaused").innerHTML = l.paused ? `<span class="badge" style="background:#E3141B;font-size:14px">BELT PAUSED</span>` : `<span class="note">Belt running</span>`;
+  const al = S.alerts.filter(a => a.gate === g || (S.bags.find(b => b.id === a.bag) || {}).zone === g);
+  $("lalerts").innerHTML = al.length ? al.map(alertHtml).join("") : `<div class="note">No alerts for ${g}.</div>`;
+  const inLane = S.bags.filter(b => b.zone === g);
+  $("lbags").innerHTML = inLane.length ? inLane.map(b => `${pill(b.status)} <b>${b.id}</b> ${esc(b.flight)}`).join("<br>") : "Lane empty.";
+}
+function clockOf(t) { const s = 14 * 3600 + t; return [Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60, s % 60].map(x => String(x).padStart(2, "0")).join(":"); }
+
+// ---------------------------------------------------------------- passenger
+async function loadDemoPassengers() {
+  const ps = await get("/api/demo_passengers");
+  $("pdemo").innerHTML = ps.length ? ps.map(p => `<div><a href="#" onclick="$('pbook').value='${p.booking}';$('pplate').value='${p.plate}';lookup();return false">
+    ${esc(p.scenario)} (${p.bag}): <span class="mono">${p.booking} / ${p.plate}</span></a></div>`).join("") : "Scenario bags haven't been checked in yet at this point in the hour.";
+}
+async function lookup() {
+  const r = await fetch(`/api/passenger?booking=${encodeURIComponent($("pbook").value)}&plate=${encodeURIComponent($("pplate").value)}`);
+  if (!r.ok) { $("presult").innerHTML = `<div class="alert">No bag found for that booking reference and bag tag number.</div>`; return; }
+  const p = await r.json();
+  $("presult").innerHTML = `<div class="alert" style="border-color:var(--red)"><h3>${esc(p.message)}</h3>
+    <div class="note">Flight ${esc(p.flight)} to ${esc(p.destination)} &middot; bag tag ${esc(p.plate)} &middot; updated ${esc(p.updated)}</div>
+    <div style="margin-top:6px">Now: <b>${esc(p.where)}</b></div></div>
+    <div class="hist" style="margin-top:8px">${p.journey.map(h => `<div><span class="mono note">${h.clock}</span> ${esc(h.text.split(":")[0])}</div>`).join("")}</div>`;
+  clearTimeout(window._pt); window._pt = setTimeout(() => { if (document.querySelector("#tab-passenger.on")) lookup(); }, 2000);
+}
+
+// ---------------------------------------------------------------- feed
+let feedRun = null;
+async function feedLoop() {
+  try {
+    if (S && S.feed_run !== feedRun) { feedRun = S.feed_run; lastSeq = 0; feedLines = []; }
+    const evs = await get(`/api/events?after=${lastSeq}&limit=200`);
+    if (evs.length && evs[0].seq < lastSeq) feedLines = [];
+    for (const e of evs) { lastSeq = Math.max(lastSeq, e.seq); feedLines.push(e); }
+
+    feedLines = feedLines.slice(-400);
+    if (!$("pausefeed").checked && document.querySelector("#tab-feed.on")) {
+      const hide = $("hidezone").checked;
+      $("feed").innerHTML = feedLines.filter(e => !(hide && e.type === "ZONE_CHANGED")).slice().reverse().slice(0, 250)
+        .map(e => `<div class="feedline" title="${esc(JSON.stringify(e))}">${esc(JSON.stringify(e))}</div>`).join("");
+    }
+  } catch (e) { console.warn(e); }
+  setTimeout(feedLoop, 1000);
+}
+
+// ---------------------------------------------------------------- room demo (3-4 laptops in a square)
+// One ESP32 tag, several laptops at the corners of a square. Each laptop turns the tag's signal
+// strength into a rough distance; the server (autotrack/room.py) combines them into an approximate
+// position, decides the bag status and tells the tag to beep. This tab only draws GET /api/room
+// (every 500 ms while the tab is open - the server also updates the position every 500 ms)
+// and sends button presses back to /api/room/...
+const ROOM_POLL_MS = 500;
+const ROOM_TITLE = document.title;
+const ROOM_ROLE_COL = { correct: "#1F9D55", wrong: "#E3141B", corner: "#2B2D32" };
+const ROOM_EV = { wrong: ["Wrong aircraft", "#E3141B"], checkin: ["Checked in", "#16803F"], zone_out: ["Out of zone", "#A50E13"],
+                  zone_in: ["Back in zone", "#1F9D55"], calib: ["Calibration", "#2563EB"], info: ["Info", "#5E626B"] };
+const ROOM_TAG_MODES = { 0: "normal", 1: "WRONG AIRCRAFT (red + beep)", 2: "OK (green + chirp)", 3: "locate (beep)" };
+const ROOM_HELP = {
+  view: "Live view. Dashed circles show how far each laptop thinks the tag is (thick = one of the 3 closest, which count most).",
+  pick: "Click the map where you will hold the tag still for \"Calibrate room\". The purple crosshair marks the spot.",
+  move: "Drag each laptop to where it really stands (snaps to 5 cm). Measure the square with a tape for the best result.",
+};
+let R = null;              // last /api/room answer (null = none yet, or the server isn't running the room demo)
+let roomErr = null;        // why the last poll failed
+let roomMapMode = "view";  // "view" | "pick" | "move"
+let roomPick = null;       // calibration spot picked on the map {x, y}; null = centre of the online laptops
+let roomDrag = null;       // laptop being dragged {id, x, y, ox, oy, pointerId, moved}
+let roomDrop = null;       // laptop just dropped {id, x, y}: drawn there until the server confirms
+let roomView = null;       // map scale: metres -> SVG units {x0, x1, y0, y1, s, W, H}
+let roomBoxCache = null;   // the map area only grows while the laptops stay put (stops the map jumping)
+let roomMuted = false, roomAlertOn = false, roomAudio = null, roomFlip = false;
+
+const roomF = (v, d = 1) => (v == null || !isFinite(v)) ? "--" : (+v).toFixed(d);
+const roomSigned = (v, d = 1) => (v == null || !isFinite(v)) ? "--" : (v >= 0 ? "+" : "") + (+v).toFixed(d);
+const roomSnap = (v) => Math.round(v / 0.05) * 0.05;
+function roomClock(t) { const d = new Date(t * 1000); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, "0")).join(":"); }
+function roomSay(text, bad) { $("roommsg").textContent = text || ""; $("roommsg").style.color = bad ? "var(--red)" : ""; }
+
+// Ask the server every 500 ms, but only while the Room demo tab is open.
+async function roomLoop() {
+  if (document.querySelector("#tab-room.on")) {
+    try { R = await get("/api/room"); roomErr = null; }
+    catch (e) { R = null; roomErr = String((e && e.message) || e); }
+    roomRender();
+  } else roomAlertOn = false;
+  setTimeout(roomLoop, ROOM_POLL_MS);
+}
+
+// POST to a room endpoint. Endpoints that answer with the room state redraw the page straight away.
+async function roomPost(url, body) {
+  let r;
+  try { r = await post(url, body || {}); }
+  catch (e) { roomSay("Could not reach the server (" + ((e && e.message) || e) + ")", true); return null; }
+  if (r && Array.isArray(r.anchors)) { R = r; roomErr = null; roomRender(); }
+  if (r && (r.error || r.detail)) roomSay(typeof r.detail === "string" ? r.detail : (r.error || JSON.stringify(r.detail)), true);
+  return r;
+}
+const roomConfig = (patch) => roomPost("/api/room/config", patch);
+
+// Laptops sorted round the square; a laptop being dragged is drawn where the mouse is.
+function roomAnchors() {
+  const list = R && Array.isArray(R.anchors) ? R.anchors.slice() : [];
+  list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return list.map(a => {
+    const o = roomDrag && roomDrag.id === a.id ? roomDrag : roomDrop && roomDrop.id === a.id ? roomDrop : null;
+    return o ? { ...a, x: o.x, y: o.y } : a;
+  });
+}
+
+function roomRender() {
+  roomRenderBanner();
+  roomRenderMap();
+  roomRenderControls();
+  roomRenderTable();
+  roomRenderEvents();
+  roomAlertOn = !!(R && R.enabled !== false && R.alert);
+}
+
+// ---------- big status banner
+function roomRenderBanner() {
+  const box = $("roombanner");
+  if (!R) {
+    box.className = "room-banner room-st-off";
+    $("roomstatus").textContent = roomErr ? "Server not running room demo" : "Connecting...";
+    $("roomreason").textContent = roomErr ? "GET /api/room did not answer. Start the main laptop with: python run.py --mode real --laptop alex --host 0.0.0.0" : "";
+    $("roombag").textContent = ""; $("roombadges").innerHTML = "";
+    return;
+  }
+  const bag = R.bag || {}, st = bag.status || "NOT SEEN";
+  const cls = { "WRONG AIRCRAFT": "alert", "OUT OF ZONE": "alert", "CHECKED IN": "ok", "ON TRACK": "track", "NOT SEEN": "off" }[st] || "track";
+  box.className = "room-banner room-st-" + (R.enabled === false ? "off" : cls);
+  $("roomstatus").textContent = R.enabled === false ? "Room demo off" : st;
+  const cp = (R.anchors || []).find(a => a.id === bag.checkpoint);
+  $("roomreason").textContent = R.enabled === false ? "Turn it on in Settings below." : (bag.reason || "") + (cp ? ` (at ${cp.name || cp.id}: ${cp.label || ""})` : "");
+  $("roombag").textContent = `Bag ${bag.tag || "-"} · flight ${bag.flight || "-"} · booking ${bag.booking || "-"} · tag no. ${bag.plate || "-"}`;
+  const badge = (text, bg) => `<span class="badge" style="background:${bg}">${esc(text)}</span>`;
+  $("roombadges").innerHTML = (R.real ? badge("Real Bluetooth", "#E3141B") : badge("No Bluetooth here", "#5E626B"))
+    + (R.sim ? badge("Simulator on", "#7C3AED") : "")
+    + badge("Tag: " + (ROOM_TAG_MODES[R.tag_mode] || R.tag_mode || "-"), "#2B2D32");
+}
+
+// ---------- the map: metres on a 0.5 m grid, auto-scaled to the laptops + 1.5 m margin
+function roomComputeView(A) {
+  const pts = A.map(a => [a.x, a.y]).filter(p => isFinite(p[0]) && isFinite(p[1]));
+  if (!pts.length) pts.push([0, 0], [2, 2]);
+  const key = pts.map(p => p.join(",")).join(";");
+  const ax0 = Math.min(...pts.map(p => p[0])), ax1 = Math.max(...pts.map(p => p[0]));
+  const ay0 = Math.min(...pts.map(p => p[1])), ay1 = Math.max(...pts.map(p => p[1]));
+  let bx0 = ax0, bx1 = ax1, by0 = ay0, by1 = ay1;
+  // also fit the tag / calibration spot, unless it is silly far away
+  for (const p of [R && R.position, R && R.raw_position, roomPick, R && R.calibration && R.calibration.point]) {
+    if (!p || !isFinite(p.x) || !isFinite(p.y)) continue;
+    if (p.x < ax0 - 6 || p.x > ax1 + 6 || p.y < ay0 - 6 || p.y > ay1 + 6) continue;
+    bx0 = Math.min(bx0, p.x); bx1 = Math.max(bx1, p.x); by0 = Math.min(by0, p.y); by1 = Math.max(by1, p.y);
+  }
+  let x0 = Math.floor((bx0 - 1.5) / 0.5) * 0.5, x1 = Math.ceil((bx1 + 1.5) / 0.5) * 0.5;
+  let y0 = Math.floor((by0 - 1.5) / 0.5) * 0.5, y1 = Math.ceil((by1 + 1.5) / 0.5) * 0.5;
+  const c = roomBoxCache;
+  if (c && c.key === key) { x0 = Math.min(x0, c.x0); x1 = Math.max(x1, c.x1); y0 = Math.min(y0, c.y0); y1 = Math.max(y1, c.y1); }
+  roomBoxCache = { key, x0, x1, y0, y1 };
+  const s = Math.min(900 / (x1 - x0), 620 / (y1 - y0));
+  return { x0, x1, y0, y1, s, W: (x1 - x0) * s, H: (y1 - y0) * s };
+}
+
+function roomRenderMap() {
+  const svg = $("roommap");
+  svg.classList.toggle("room-pick", roomMapMode === "pick");
+  svg.classList.toggle("room-move", roomMapMode === "move");
+  $("roommodehelp").textContent = ROOM_HELP[roomMapMode];
+  const A = roomAnchors();
+  if (!roomDrag || !roomView) roomView = roomComputeView(A);   // keep the scale still while dragging
+  const V = roomView, X = (x) => ((x - V.x0) * V.s).toFixed(1), Y = (y) => ((y - V.y0) * V.s).toFixed(1);
+  svg.setAttribute("viewBox", `0 0 ${V.W.toFixed(1)} ${V.H.toFixed(1)}`);
+  const byId = Object.fromEntries(A.map(a => [a.id, a]));
+  let s = "";
+  // grid: thin line every 0.5 m, darker + labelled every 1 m
+  for (let i = 0; V.x0 + i * 0.5 <= V.x1 + 1e-6; i++) {
+    const x = V.x0 + i * 0.5, major = Math.abs(x - Math.round(x)) < 1e-6;
+    s += `<line class="room-gl${major ? " major" : ""}" x1="${X(x)}" y1="0" x2="${X(x)}" y2="${V.H.toFixed(1)}"/>`;
+    if (major && i > 0) s += `<text class="room-axis" x="${(+X(x) + 3).toFixed(1)}" y="13">${Math.round(x)} m</text>`;
+  }
+  for (let i = 0; V.y0 + i * 0.5 <= V.y1 + 1e-6; i++) {
+    const y = V.y0 + i * 0.5, major = Math.abs(y - Math.round(y)) < 1e-6;
+    s += `<line class="room-gl${major ? " major" : ""}" x1="0" y1="${Y(y)}" x2="${V.W.toFixed(1)}" y2="${Y(y)}"/>`;
+    if (major && i > 0) s += `<text class="room-axis" x="4" y="${(+Y(y) - 4).toFixed(1)}">${Math.round(y)} m</text>`;
+  }
+  if (!R) {
+    $("roommap").innerHTML = s + `<text class="room-empty" x="${(V.W / 2).toFixed(1)}" y="${(V.H / 2).toFixed(1)}">${roomErr ? "Server not running room demo" : "Connecting..."}</text>`;
+    $("roompos").textContent = ""; $("roommapsum").textContent = "";
+    return;
+  }
+  const zone = R.zone || {};
+  // the zone square (dashed): red when the server says the tag is outside
+  const square = !roomDrag && !roomDrop && Array.isArray(zone.square) && zone.square.length ? zone.square : A.map(a => [a.x, a.y]);
+  if (square.length >= 2) {
+    const zc = zone.inside === false ? " out" : zone.inside === true ? " in" : "";
+    s += `<polygon class="room-zone${zc}" points="${square.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
+  }
+  // the pair of neighbouring laptops that both say "too far" (the edge the tag left through)
+  if (Array.isArray(zone.violating) && zone.violating.length === 2) {
+    const a = byId[zone.violating[0]], b = byId[zone.violating[1]];
+    if (a && b) s += `<line class="room-viol" x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}"/>`;
+  }
+  // distance circle per online laptop
+  for (const a of A) {
+    if (!a.online || a.distance_m == null || !isFinite(a.distance_m)) continue;
+    s += `<circle class="room-range${a.closest3 ? " top" : ""}" cx="${X(a.x)}" cy="${Y(a.y)}" r="${(Math.min(a.distance_m, 15) * V.s).toFixed(1)}" stroke="${ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner}"/>`;
+  }
+  // tag: trail, uncertainty circle, smoothed dot, raw fix
+  const tr = Array.isArray(R.trail) ? R.trail.filter(p => p && isFinite(p[0]) && isFinite(p[1])) : [];
+  if (tr.length > 1) s += `<polyline class="room-trail" points="${tr.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
+  const P = R.position, RP = R.raw_position;
+  if (RP && isFinite(RP.x)) s += `<circle class="room-raw" cx="${X(RP.x)}" cy="${Y(RP.y)}" r="6"><title>raw fix (least squares)</title></circle>`;
+  if (P && isFinite(P.x)) {
+    if (R.pos_sigma_m != null) s += `<circle class="room-sigma" cx="${X(P.x)}" cy="${Y(P.y)}" r="${(R.pos_sigma_m * V.s).toFixed(1)}"/>`;
+    s += `<circle class="room-pos" cx="${X(P.x)}" cy="${Y(P.y)}" r="10"><title>tag (smoothed)</title></circle>
+          <text class="room-sub" x="${X(P.x)}" y="${(+Y(P.y) - 16).toFixed(1)}">${esc((R.bag && R.bag.tag) || "TAG")}</text>`;
+  }
+  // calibration crosshair: while calibrating, or the spot picked on the map
+  const cal = R.calibration || {};
+  const cp = (cal.phase === "running" && cal.point) || roomPick;
+  if (cp && isFinite(cp.x)) {
+    const cx = +X(cp.x), cy = +Y(cp.y);
+    s += `<g class="room-cross"><circle cx="${cx}" cy="${cy}" r="14"/><line x1="${cx - 24}" y1="${cy}" x2="${cx + 24}" y2="${cy}"/>
+          <line x1="${cx}" y1="${cy - 24}" x2="${cx}" y2="${cy + 24}"/></g>
+          <text class="room-sub room-cross-text" x="${cx}" y="${cy + 38}">${cal.phase === "running" ? "hold tag still here" : "calibration spot"}</text>`;
+  }
+  // the laptops on top (hollow = offline, thick ring = tag touching it)
+  for (const a of A) {
+    const col = ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner, x = X(a.x), y = Y(a.y);
+    s += `<g class="room-anchor-g" data-anchor="${esc(a.id)}" transform="translate(${x},${y})">
+      <title>${esc(a.name || a.id)} - ${esc(a.label || a.role)}</title>
+      ${a.touching ? `<rect class="room-ring" x="-24" y="-24" width="48" height="48"/>` : ""}
+      <rect class="room-anchor-shadow" x="-12" y="-12" width="30" height="30"/>
+      <rect class="room-anchor" x="-15" y="-15" width="30" height="30" fill="${a.online ? col : "#fff"}" stroke="${a.online ? "#1C1D20" : col}"/>
+      <text class="room-name" y="-24">${esc(a.name || a.id)}</text>
+      <text class="room-sub" y="32">${esc(a.label || a.role)}</text>
+      <text class="room-sub" y="46">${a.online ? (a.distance_m != null ? "~" + roomF(a.distance_m, 2) + " m" : "online") : "offline"}</text>
+    </g>`;
+  }
+  if (!A.length) s += `<text class="room-empty" x="${(V.W / 2).toFixed(1)}" y="${(V.H / 2).toFixed(1)}">No laptops yet: start a reporter, or press Simulate</text>`;
+  svg.innerHTML = s;
+  // the line under the map
+  const online = A.filter(a => a.online).length;
+  $("roommapsum").textContent = `(${online}/${A.length} laptops online)`;
+  if (P && isFinite(P.x)) {
+    const v = R.velocity, sp = v ? Math.hypot(v.vx, v.vy) : null;
+    $("roompos").textContent = `Tag at about x ${roomF(P.x, 2)} m, y ${roomF(P.y, 2)} m` + (R.pos_sigma_m != null ? ` (± ${roomF(R.pos_sigma_m, 1)} m)` : "")
+      + (sp != null ? ` · moving ${roomF(sp, 2)} m/s` : "") + (zone.inside === false ? " · OUTSIDE the zone" : zone.inside === true ? " · inside the zone" : "");
+  } else $("roompos").textContent = `No position yet: needs at least 3 laptops online (${online} now).`;
+}
+
+// Mouse / finger on the map: pick the calibration spot, or drag laptops.
+function roomMetres(e) {
+  const svg = $("roommap"), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: roomView.x0 + q.x / roomView.s, y: roomView.y0 + q.y / roomView.s };
+}
+function roomSetupMap() {
+  const svg = $("roommap");
+  svg.addEventListener("pointerdown", (e) => {
+    if (!R || !roomView) return;
+    const p = roomMetres(e);
+    if (roomMapMode === "pick") { roomPick = { x: roomSnap(p.x), y: roomSnap(p.y) }; roomRender(); return; }
+    if (roomMapMode !== "move") return;
+    const g = e.target.closest && e.target.closest("[data-anchor]");
+    const a = g && roomAnchors().find(x => x.id === g.dataset.anchor);
+    if (!a) return;
+    roomDrag = { id: a.id, x: a.x, y: a.y, ox: a.x - p.x, oy: a.y - p.y, pointerId: e.pointerId, moved: false };
+    svg.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!roomDrag || e.pointerId !== roomDrag.pointerId) return;
+    const p = roomMetres(e);
+    roomDrag.x = roomSnap(p.x + roomDrag.ox); roomDrag.y = roomSnap(p.y + roomDrag.oy); roomDrag.moved = true;
+    roomRenderMap();
+  });
+  svg.addEventListener("pointerup", async (e) => {
+    if (!roomDrag || e.pointerId !== roomDrag.pointerId) return;
+    const d = roomDrag; roomDrag = null;
+    if (!d.moved) { roomRenderMap(); return; }
+    const x = +d.x.toFixed(2), y = +d.y.toFixed(2);
+    roomDrop = { id: d.id, x, y };
+    await roomConfig({ anchors: { [d.id]: { x, y } } });
+    roomDrop = null;
+    roomSay(`Moved ${d.id} to x ${x} m, y ${y} m.`);
+    roomRenderMap();
+  });
+  svg.addEventListener("pointercancel", () => { roomDrag = null; roomRenderMap(); });
+}
+function roomSetMode(m) {
+  roomMapMode = m;
+  document.querySelectorAll("#roommodes button").forEach(b => b.classList.toggle("on", b.dataset.roomMode === m));
+  roomRenderMap();
+}
+
+// ---------- calibration card, demo buttons, settings
+function roomRenderControls() {
+  const c = (R && R.calibration) || {}, running = c.phase === "running";
+  const btn = $("roomcalbtn");
+  btn.disabled = !R || running;
+  btn.textContent = running ? `Calibrating... ${Math.round((c.progress || 0) * 100)}% - keep the tag still` : "Calibrate room (noise floor)";
+  $("roomcalbar").style.width = Math.round(Math.max(0, Math.min(1, c.progress || 0)) * 100) + "%";
+  $("roomcalmsg").textContent = c.message || (R ? "Not calibrated yet in this session." : "");
+  $("roomcalmsg").style.color = c.phase === "error" ? "var(--red)" : "";
+  const sp = running && c.point ? c.point : roomPick;
+  $("roomspot").textContent = running && c.point ? `Holding at x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m`
+    : roomPick ? `Spot: x ${roomF(sp.x, 2)} m, y ${roomF(sp.y, 2)} m (picked on the map)` : "Spot: centre of the online laptops";
+  const res = Array.isArray(c.results) ? c.results : [];
+  const html = res.length ? `<table><tr><th>Laptop</th><th>Median</th><th>Noise &sigma;</th><th>Packets</th><th>Distance</th><th>1 m level</th><th>Offset</th></tr>`
+    + res.map(r => `<tr><td><b>${esc(r.id)}</b></td><td class="mono">${roomF(r.median)} dBm</td><td class="mono">${roomF(r.sigma_db)} dB</td>
+        <td class="mono">${r.packets ?? "--"}</td><td class="mono">${roomF(r.distance_m, 2)} m</td>
+        <td class="mono">${roomF(r.rssi_1m_profile)} &rarr; ${r.rssi_1m_profile != null && r.offset_db != null ? roomF(r.rssi_1m_profile + r.offset_db) : "--"} dBm</td>
+        <td class="mono">${roomSigned(r.offset_db)} dB</td></tr>`).join("") + `</table>` : "";
+  if ($("roomcalres").dataset.html !== html) { $("roomcalres").innerHTML = html; $("roomcalres").dataset.html = html; }
+  // demo buttons
+  $("roomsimbtn").textContent = R && R.sim ? "Stop simulator" : "Simulate (no hardware)";
+  $("roomsimbtn").classList.toggle("primary", !!(R && R.sim));
+  $("roommutebtn").textContent = roomMuted ? "Unmute sound" : "Mute sound";
+  if (R) {
+    const lw = R.last_write;
+    const lwText = lw && typeof lw === "object" ? Object.entries(lw).filter(([, v]) => v == null || typeof v !== "object").slice(0, 5)
+      .map(([k, v]) => `${k}: ${k === "t" && typeof v === "number" ? roomClock(v) : v}`).join(", ") : "";
+    $("roomtaginfo").textContent = `Tag should be: ${ROOM_TAG_MODES[R.tag_mode] || R.tag_mode} · last sent: ${R.tag_mode_sent == null ? "nothing yet" : (ROOM_TAG_MODES[R.tag_mode_sent] || R.tag_mode_sent)}`
+      + (lwText ? ` (${lwText})` : "") + (R.real ? "" : " · no Bluetooth on this server, so nothing reaches the real tag");
+  } else $("roomtaginfo").textContent = "";
+  // settings (never overwrite a box the user is typing in)
+  if (!R) return;
+  const setv = (id, v) => { const el = $(id); if (document.activeElement !== el && v != null) el.value = v; };
+  const z = R.zone || {}, w = R.weights || {}, bag = R.bag || {};
+  setv("roomrange", z.range_m); setv("roomhold", z.hold_s); setv("roomw3", w.closest3); setv("roomwo", w.others);
+  setv("roombflight", bag.flight); setv("roombbook", bag.booking); setv("roombplate", bag.plate);
+  if (document.activeElement !== $("roomenabled")) $("roomenabled").checked = !!R.enabled;
+}
+
+// ---------- laptops table
+function roomRenderTable() {
+  const box = $("roomtable"), fe = document.activeElement;
+  if (fe && box.contains(fe) && (fe.tagName === "INPUT" || fe.tagName === "SELECT")) return;   // don't redraw under the user's typing
+  const A = roomAnchors();
+  $("roomnlap").textContent = R ? `(${A.length})` : "";
+  let html;
+  if (!R) html = `<div class="note">Server not running room demo.</div>`;
+  else if (!A.length) html = `<div class="note">No laptops yet. Start tools/reporter.py on the other laptops, or press Simulate.</div>`;
+  else html = `<table><tr><th>Laptop</th><th>Role</th><th>Checkpoint / flight</th><th>Online</th><th>Pkts/s</th><th>RSSI</th><th>Raw</th>
+      <th>Noise &sigma;</th><th>Distance</th><th>Weight</th><th>Top 3</th><th>Touch</th><th>Touch level</th><th>Offset</th><th>Calibration</th><th></th></tr>`
+    + A.map(a => {
+      const id = esc(a.id), col = ROOM_ROLE_COL[a.role] || ROOM_ROLE_COL.corner;
+      const wpct = Math.round(Math.max(0, Math.min(1, a.weight || 0)) * 100);
+      return `<tr>
+        <td><b>${esc(a.name || a.id)}</b><br><span class="note mono">${id}</span></td>
+        <td><select data-room-role="${id}" style="border-color:${col}">${["correct", "wrong", "corner"].map(r => `<option value="${r}"${r === a.role ? " selected" : ""}>${r}</option>`).join("")}</select></td>
+        <td><input data-room-label="${id}" value="${esc(a.label)}" size="16" placeholder="label"><br>
+            <input data-room-flight="${id}" value="${esc(a.flight)}" size="8" placeholder="flight" style="margin-top:4px"></td>
+        <td style="white-space:nowrap"><span class="room-dot${a.online ? " on" : ""}"></span> ${a.online ? "online" : "offline"}</td>
+        <td class="mono">${roomF(a.packets_s)}</td>
+        <td class="mono">${roomF(a.rssi)}</td>
+        <td class="mono">${roomF(a.raw)}</td>
+        <td class="mono">${roomF(a.sigma_db)}</td>
+        <td class="mono" style="white-space:nowrap">${a.distance_m == null ? "--" : roomF(a.distance_m, 2) + " m"}</td>
+        <td><div class="bar room-wbar"><i style="width:${wpct}%;background:${a.closest3 ? "var(--red)" : "var(--graphite-2)"}"></i></div><span class="note mono">${roomF(a.weight, 2)}</span></td>
+        <td>${a.closest3 ? `<span class="badge" style="background:#2563EB">Top 3</span>` : ""}</td>
+        <td>${a.touching ? `<span class="badge" style="background:${col}">Touching</span>` : `<span class="note">-</span>`}</td>
+        <td class="mono" style="white-space:nowrap">${roomF(a.touch_dbm)} dBm<br><button class="small" data-room-touch="${id}" style="margin-top:4px">Set touch</button></td>
+        <td class="mono">${roomSigned(a.offset_db)} dB</td>
+        <td>${a.calibrated ? `<span class="badge" style="background:#16803F">Calibrated</span>` : `<span class="badge" style="background:#E3141B">Not calibrated</span>`}
+            <div class="note mono" style="white-space:nowrap">1 m = ${roomF(a.rssi_1m)} dBm, n = ${roomF(a.n, 2)}</div></td>
+        <td><button class="small" data-room-remove="${id}">Remove</button></td></tr>`;
+    }).join("") + `</table>`;
+  if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
+}
+function roomSetupTable() {
+  const box = $("roomtable");
+  box.addEventListener("change", (e) => {
+    const t = e.target, d = t.dataset;
+    if (d.roomRole) roomConfig({ anchors: { [d.roomRole]: { role: t.value } } });
+    else if (d.roomLabel) roomConfig({ anchors: { [d.roomLabel]: { label: t.value.trim() } } });
+    else if (d.roomFlight) roomConfig({ anchors: { [d.roomFlight]: { flight: t.value.trim() } } });
+    t.blur();
+  });
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.roomTouch) {
+      const id = b.dataset.roomTouch, r = await roomPost("/api/room/touch", { id });
+      if (r && !r.error && !r.detail) {
+        const a = (R && R.anchors || []).find(x => x.id === id);
+        roomSay(`Touch level for ${id} set` + (a ? ` to ${roomF(a.touch_dbm)} dBm.` : "."));
+      }
+    } else if (b.dataset.roomRemove) {
+      const id = b.dataset.roomRemove;
+      if (confirm(`Remove ${id} from the room? (It comes back if its reporter keeps sending.)`)) roomConfig({ anchors: { [id]: null } });
+    }
+  });
+}
+
+// ---------- timeline
+function roomRenderEvents() {
+  const ev = R && Array.isArray(R.events) ? R.events : [];
+  const html = ev.length ? ev.map(e => {
+    const [name, col] = ROOM_EV[e.kind] || ROOM_EV.info;
+    return `<div class="room-ev" style="border-left-color:${col}"><span class="mono note">${roomClock(e.t)}</span>
+      <b style="color:${col}">${name}</b> ${esc(e.text)}</div>`;
+  }).join("") : `<div class="note">${R ? "Nothing yet." : "Server not running room demo."}</div>`;
+  if ($("roomevents").dataset.html !== html) { $("roomevents").innerHTML = html; $("roomevents").dataset.html = html; }
+}
+
+// ---------- sound + flashing title while the bag is in alarm
+// Browsers only allow sound after the first click on the page, so the audio starts then.
+function roomBeepOnce() {
+  if (!roomAudio || roomAudio.state !== "running") return;
+  const t = roomAudio.currentTime, o = roomAudio.createOscillator(), g = roomAudio.createGain();
+  o.type = "square"; o.frequency.value = 1320;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  o.connect(g); g.connect(roomAudio.destination);
+  o.start(t); o.stop(t + 0.2);
+}
+document.addEventListener("pointerdown", () => {
+  try {
+    if (!roomAudio) roomAudio = new (window.AudioContext || window.webkitAudioContext)();
+    if (roomAudio.state === "suspended") roomAudio.resume();
+  } catch (e) { /* no sound on this browser: the screen still flashes */ }
+}, { capture: true });
+setInterval(() => {
+  const on = roomAlertOn && R && document.querySelector("#tab-room.on");
+  if (on) {
+    if (!roomMuted) roomBeepOnce();
+    roomFlip = !roomFlip;
+    document.title = roomFlip ? `!! ${(R.bag && R.bag.status) || "ALERT"} !!` : ROOM_TITLE;
+  } else if (document.title !== ROOM_TITLE) document.title = ROOM_TITLE;
+}, 700);
+
+// ---------- wire up the buttons (called once from init)
+function roomSetup() {
+  roomSetupMap();
+  roomSetupTable();
+  document.querySelectorAll("#roommodes button").forEach(b => b.onclick = () => roomSetMode(b.dataset.roomMode));
+  $("roompickbtn").onclick = () => roomSetMode("pick");
+  $("roomcentrebtn").onclick = () => { roomPick = null; roomRender(); };
+  $("roomcalbtn").onclick = () => {
+    const body = { seconds: +$("roomcalsecs").value || 8 };
+    if (roomPick) { body.x = roomPick.x; body.y = roomPick.y; }
+    roomSay("");
+    roomPost("/api/room/calibrate", body);
+  };
+  $("roomsimbtn").onclick = () => roomPost("/api/room/sim", { on: !(R && R.sim) });
+  $("roomresetbtn").onclick = async () => { const r = await roomPost("/api/room/reset", {}); if (r && !r.error && !r.detail) roomSay("Demo reset: bag status, events and filters cleared."); };
+  const roomBeepCmd = async (mode) => {
+    const r = await roomPost("/api/room/beep", { mode });
+    if (r && r.ok !== false && !r.error && !r.detail) roomSay(`Sent "${ROOM_TAG_MODES[mode]}" to the tag.`);
+    else if (r && r.ok === false && !r.error) roomSay("Tag did not accept the command (see the server window).", true);
+  };
+  $("roombeepbtn").onclick = () => roomBeepCmd(3);
+  $("roomstopbtn").onclick = () => roomBeepCmd(0);
+  $("roommutebtn").onclick = () => { roomMuted = !roomMuted; roomRenderControls(); };
+  const num = (id) => { const v = parseFloat($(id).value); return isFinite(v) ? v : undefined; };
+  $("roomenabled").onchange = (e) => roomConfig({ enabled: e.target.checked });
+  $("roomrange").onchange = $("roomhold").onchange = () => roomConfig({ zone: { range_m: num("roomrange"), hold_s: num("roomhold") } });
+  $("roomw3").onchange = $("roomwo").onchange = () => roomConfig({ weights: { closest3: num("roomw3"), others: num("roomwo") } });
+  $("roombflight").onchange = $("roombbook").onchange = $("roombplate").onchange = () =>
+    roomConfig({ bag: { flight: $("roombflight").value.trim(), booking: $("roombbook").value.trim(), plate: $("roombplate").value.trim() } });
+  roomRender();
+}
+init();
+</script>
+</body>
+</html>

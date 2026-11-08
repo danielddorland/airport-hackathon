@@ -784,9 +784,134 @@ tr.click:hover { background: var(--red-tint); }
 #lttag.flash .lt-body { animation: ltblink .35s infinite alternate; }
 @keyframes ltblink { from { opacity: 1; } to { opacity: .25; } }
 
+/* --------------------------------------------------------------- room demo
+   3-4 laptops in a square triangulating one tag. Everything here starts "room-". */
+
+/* big bag-status banner at the top of the tab */
+.room-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  color: var(--ink);
+  background: var(--card);
+  border: 4px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+}
+.room-banner h2 { font-size: clamp(28px, 5vw, 52px); letter-spacing: .03em; }
+.room-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+.room-reason { margin-top: 6px; font-size: 16px; font-weight: 700; max-width: 75ch; }
+.room-banner-side { text-align: right; font-size: 13px; }
+.room-badges { gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.room-st-alert { color: #fff; background: var(--red); animation: room-pulse .7s infinite alternate; }
+.room-st-ok { color: #fff; background: #16803F; }      /* darker green so white text keeps AA */
+.room-st-track { background: var(--card); }
+.room-st-off { color: var(--graphite-2); background: var(--steel-light); }
+@keyframes room-pulse { from { background: var(--red); } to { background: var(--red-dark); } }
+
+.room-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+  gap: 22px;
+}
+
+/* map mode buttons: the active one is red like the nav tabs */
+.room-modes { gap: 8px; }
+.room-modes button.on { color: #fff; background: var(--red); }
+.room-legend { gap: 6px 14px; margin-top: 8px; }
+.room-legend span { white-space: nowrap; }
+
+/* the map itself (drawn in metres, scaled by JS) */
+#roommap {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: var(--sh-card);
+  user-select: none;
+}
+#roommap.room-pick { cursor: crosshair; }
+#roommap.room-move .room-anchor-g { cursor: grab; }
+#roommap.room-move, #roommap.room-pick { touch-action: none; }
+.room-gl { stroke: rgba(28, 29, 32, .10); stroke-width: 1; }
+.room-gl.major { stroke: rgba(28, 29, 32, .25); }
+.room-axis { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--graphite-2); }
+.room-zone { fill: rgba(31, 157, 85, .06); stroke: var(--ink); stroke-width: 3; stroke-dasharray: 10 7; }
+.room-zone.in { fill: rgba(31, 157, 85, .10); }
+.room-zone.out { fill: rgba(227, 20, 27, .10); stroke: var(--red); }
+.room-viol { stroke: var(--red); stroke-width: 10; stroke-linecap: round; opacity: .85; animation: ltblink .35s infinite alternate; }
+.room-range { fill: none; stroke-width: 2; stroke-dasharray: 6 6; opacity: .6; }   /* colour set inline per role */
+.room-range.top { stroke-width: 4; opacity: .95; }
+.room-trail { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; opacity: .5; }
+.room-sigma { fill: rgba(37, 99, 235, .14); stroke: var(--blue); stroke-width: 1.5; }
+.room-pos { fill: var(--blue); stroke: var(--ink); stroke-width: 3; }
+.room-raw { fill: none; stroke: var(--ink); stroke-width: 2; }
+.room-cross { fill: none; stroke: var(--purple); stroke-width: 3; }
+.room-cross-text { fill: var(--purple); }
+.room-anchor { stroke-width: 3; }
+.room-anchor-shadow { fill: var(--ink); }
+.room-ring { fill: none; stroke: var(--ink); stroke-width: 5; animation: ltblink .4s infinite alternate; }
+.room-name, .room-sub {
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.room-name { font-family: var(--display); font-size: 14px; font-weight: 900; fill: var(--ink); stroke-width: 4px; }
+.room-sub { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--graphite-2); stroke-width: 3px; }
+.room-empty { font-family: var(--display); font-size: 18px; font-weight: 900; fill: var(--graphite-2); text-anchor: middle; }
+
+/* calibration card */
+.room-big { font-size: 15px; padding: 12px 18px; }
+.room-progress { height: 18px; margin: 12px 0 6px; }
+.room-progress i { background: var(--red); transition: width .3s linear; }
+
+/* tables (laptops + calibration results) scroll sideways on small screens */
+.room-tablewrap { overflow-x: auto; }
+.room-tablewrap table { font-size: 12px; }
+.room-tablewrap td { vertical-align: middle; }
+.room-tablewrap input:not([type="checkbox"]), .room-tablewrap select { padding: 3px 6px; font-size: 12px; border-width: 2px; }
+.room-wbar { display: inline-block; width: 64px; height: 10px; vertical-align: middle; margin-right: 4px; }
+.room-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+}
+.room-dot.on { background: var(--green); }
+
+/* settings form: two columns of label + box */
+.room-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 10px; }
+.room-form label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.room-form label.room-check { flex-direction: row; align-items: center; gap: 8px; }
+.room-form input:not([type="checkbox"]) { width: 100%; }
+
+/* timeline lines, left bar coloured by kind (set inline) */
+.room-ev {
+  padding: 5px 8px;
+  font-size: 12.5px;
+  border-left: 6px solid var(--muted);
+  border-bottom: 2px solid var(--steel-light);
+}
+
 /* -------------------------------------------------------------- responsive */
 @media (max-width: 1100px) {
   .ops { grid-template-columns: 1fr; }
+  .room-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
   header { padding: 12px 16px; gap: 12px; }
@@ -804,11 +929,16 @@ tr.click:hover { background: var(--red-tint); }
   .kv { grid-template-columns: 105px 1fr; }
   #busy { font-size: 22px; }
   .phone { padding: 24px 14px 16px; box-shadow: 5px 5px 0 var(--ink); }
+  .room-banner { padding: 14px 16px; box-shadow: 5px 5px 0 var(--ink); }
+  .room-banner-side { text-align: left; }
+  .room-badges { justify-content: flex-start; }
+  .room-form { grid-template-columns: 1fr; }
 }
 
 /* respect reduced motion: keep the state visible, drop the movement */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
   .belt-rollers, .light.red, .light.amber, #lttag.flash .lt-body { animation: none; }
+  .room-st-alert, .room-viol, .room-ring { animation: none; }
   .flash { animation: none; background: var(--red-tint); }
 }

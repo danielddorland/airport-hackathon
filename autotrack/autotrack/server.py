@@ -20,6 +20,17 @@ server.py - the web server (FastAPI). Everything runs on this laptop; no interne
   POST /api/laptops/clear           drop all measurements of this laptop
   POST /api/laptops/threshold       {"meters": 1.9} - "too far" limit in metres
 
+  Room demo (3-4 laptops in a square find the one ESP32 tag together - see room.py):
+  GET  /api/room                    positions, distances, bag status (the page polls it every 300 ms)
+  POST /api/room/sightings          {"laptop": "joseph", "packets": [{"age_ms": 120, "rssi": -63}]}
+                                    - sent by tools/reporter.py on the other laptops
+  POST /api/room/config             change the layout, zone, bag, weights (partial update)
+  POST /api/room/calibrate          {"x": 1, "y": 1, "seconds": 8} - "Calibrate room" (tag held still)
+  POST /api/room/touch              {"id": "joseph"} - the tag is touching this laptop now: learn the level
+  POST /api/room/reset              clear the bag status, filters and events (keeps calibration)
+  POST /api/room/sim                {"on": true} - fake packets for every laptop (no hardware needed)
+  POST /api/room/beep               {"mode": 0-3} - send a tag command by hand (real mode only)
+
 The simulation clock runs in a background task. In real mode, real_ble.py scans the laptop's
 Bluetooth for the ESP32 tag and sends it beep/flash commands.
 """
@@ -38,6 +49,7 @@ from fastapi.staticfiles import StaticFiles
 from .laptops import Laptops
 from .layout import ROOT
 from .livetag import LiveTagMonitor
+from .room import Room
 from .sim import LIVE_RECEIVER, Simulation
 
 STATIC = ROOT / "static"
@@ -63,12 +75,18 @@ async def startup():
     state["sim"] = Simulation(smoothing=CONFIG["smoothing"])
     log = lambda m: print(m, flush=True)  # noqa: E731
     state["live"] = LiveTagMonitor(laptops=Laptops(active=CONFIG.get("laptop"), log=log), log=log)
+    # The Room demo shares the laptop profiles with the live monitor. While the room is in charge
+    # of the tag (2+ laptops hear it), the single-laptop monitor stops sending its own commands.
+    state["room"] = Room(state["live"].laptops, log=log)
+    state["room"].loop = state["loop"]
+    state["live"].suppress = state["room"].controls_tag
     p = state["live"].laptops.profile()
     print(f"This laptop: {p['name']} ({'calibrated' if p['calibrated'] else 'NOT calibrated - using Alex numbers'})", flush=True)
     if CONFIG["mode"] == "real":
         await start_real_ble()
     asyncio.create_task(clock_loop())
     asyncio.create_task(state["live"].run())
+    asyncio.create_task(room_loop())
     threading.Thread(target=_build_checkpoints, daemon=True).start()
 
 
@@ -91,11 +109,30 @@ async def start_real_ble():
     # The real ESP32 feeds the "stay near the checkpoint" monitor (livetag.py) only.
     # The simulated airport keeps running on simulated tags.
     monitor = state["live"]
-    ble = RealBLE(LIVE_RECEIVER, keys, on_sighting=monitor.on_sighting,
+    room = state["room"]
+
+    def on_sighting(s):
+        # This laptop's own verified packets feed the single-laptop monitor AND the room
+        # (as the laptop chosen with --laptop / the "This laptop" picker).
+        monitor.on_sighting(s)
+        room.ingest_sighting(s, monitor.laptops.active)
+
+    ble = RealBLE(LIVE_RECEIVER, keys, on_sighting=on_sighting,
                   log=lambda m: print(m, flush=True))
     state["ble"] = ble
     monitor.ble = ble
+    room.ble = ble
     await ble.start()
+
+
+async def room_loop():
+    """Updates the Room demo (filters, position, alerts) every 0.2 s."""
+    while True:
+        try:
+            state["room"].tick()
+        except Exception as e:  # never let the room die during a demo
+            print(f"[room] error: {e!r}", flush=True)
+        await asyncio.sleep(0.2)
 
 
 async def clock_loop():
@@ -397,3 +434,94 @@ def laptops_threshold(body: dict):
     except (TypeError, ValueError):
         raise HTTPException(400, "meters must be a number")
     return {"ok": True, **state["live"].laptops.to_json()}
+
+
+# ---------------------------------------------------------------------- Room demo (room.py)
+MAX_PACKETS = 500
+
+
+@app.get("/api/room")
+def room_state():
+    return state["room"].state()
+
+
+@app.post("/api/room/sightings")
+def room_sightings(body: dict):
+    """Packets from another laptop (tools/reporter.py). Times are sent as 'age' so clocks don't matter."""
+    laptop = str(body.get("laptop") or "").strip()
+    packets = body.get("packets", [])
+    if not laptop:
+        raise HTTPException(400, "need 'laptop'")
+    if not isinstance(packets, list):
+        raise HTTPException(400, "'packets' must be a list")
+    if len(packets) > MAX_PACKETS:
+        raise HTTPException(400, f"too many packets (max {MAX_PACKETS} per request)")
+    clean = []
+    for p in packets:
+        try:
+            rssi, age = float(p["rssi"]), float(p.get("age_ms", 0))
+        except (TypeError, ValueError, KeyError):
+            raise HTTPException(400, "each packet needs a number 'rssi' (and 'age_ms')")
+        if not -127 <= rssi <= 0:
+            raise HTTPException(400, "rssi must be between -127 and 0 dBm")
+        if not 0 <= age <= 60000:
+            raise HTTPException(400, "age_ms must be between 0 and 60000")
+        clean.append({"rssi": rssi, "age_ms": age})
+    accepted = state["room"].ingest_batch(laptop, clean)
+    return {"ok": True, "accepted": accepted}
+
+
+@app.post("/api/room/config")
+def room_config(body: dict):
+    try:
+        return state["room"].configure(body)
+    except (TypeError, ValueError) as e:
+        raise HTTPException(400, f"bad config: {e}")
+
+
+@app.post("/api/room/calibrate")
+def room_calibrate(body: dict | None = None):
+    """Start "Calibrate room": hold the tag still at (x, y) (default: middle of the online laptops)."""
+    body = body or {}
+    try:
+        x = None if body.get("x") is None else float(body["x"])
+        y = None if body.get("y") is None else float(body["y"])
+        seconds = float(body.get("seconds", 8))
+        state["room"].start_calibration(x, y, seconds)
+    except (TypeError, ValueError) as e:
+        raise HTTPException(400, str(e))
+    return state["room"].state()
+
+
+@app.post("/api/room/touch")
+def room_touch(body: dict):
+    aid = str(body.get("id") or "").strip()
+    if not aid:
+        raise HTTPException(400, "need 'id'")
+    try:
+        return state["room"].capture_touch(aid)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/room/reset")
+def room_reset(body: dict | None = None):
+    state["room"].reset()
+    return state["room"].state()
+
+
+@app.post("/api/room/sim")
+def room_sim(body: dict):
+    state["room"].set_sim(bool(body.get("on")))
+    return state["room"].state()
+
+
+@app.post("/api/room/beep")
+async def room_beep(body: dict):
+    try:
+        mode = int(body.get("mode", 3))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "mode must be 0, 1, 2 or 3")
+    if mode not in (0, 1, 2, 3):
+        raise HTTPException(400, "mode must be 0, 1, 2 or 3")
+    return await state["room"].manual_beep(mode)

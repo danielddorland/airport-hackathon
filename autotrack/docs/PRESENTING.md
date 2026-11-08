@@ -61,6 +61,12 @@ real path of all 718 bags.
 
 **`tools/check_ble.py`**: A quick test for the day: can the laptop hear the ESP32, and can it make it beep?
 
+**`tools/reporter.py`**: Room demo only. Runs on every laptop except the main one: listens for the tag with
+the same checked Bluetooth code and sends the signal strengths to the main laptop 4 times a second.
+
+**`autotrack/room.py`**: Room demo brain. Turns 3-4 laptops' signals into distances, a position (weighted
+least squares + Kalman filters), "touching" a laptop, and the WRONG AIRCRAFT / CHECKED IN / OUT OF ZONE checks.
+
 **`securebag_cache/`**: The script that ran the real SecureBag photo comparison (needs PyTorch, so we ran it
 ahead of time) and its saved results.
 
@@ -147,3 +153,57 @@ Honest limits to say out loud:
 ## 6. Results in simulation
 
 See `results/metrics.md` (made by `tools/evaluate.py`).
+
+---
+
+## 7. Room demo: how 3-4 laptops find the tag (plain English)
+
+Physical setup and who stands where: `docs/HARDWARE.md` section 7. The code is in `autotrack/room.py`;
+`tools/reporter.py` forwards the other laptops' readings to the main laptop.
+
+**From signal strength to distance.** Each laptop measures the tag's signal strength (RSSI, in dBm:
+around -50 close, -80 far). Radio signals get weaker in a predictable way with distance, the standard
+"log-distance" formula:
+
+    RSSI = A - 10 * n * log10(d)      so      d = 10 ^ ((A - RSSI) / (10 * n))
+
+`A` is the signal at 1 m and `n` says how fast it fades (2 in open air, more indoors). Example for
+Joseph's laptop (A = -67.7, n = 2.16): RSSI -74 dBm gives d = 10^(6.3 / 21.6) = about 2 m.
+
+**Per-laptop calibration.** Every laptop's Bluetooth hears the same tag 5-15 dB differently, so
+each one gets its own `A` and `n`, fitted with least squares from a few measurements at known
+distances (`data/laptop_profiles.json`). Joseph: 5 distances -> A = -67.7 dBm, n = 2.16.
+
+**Smoothing each laptop's signal (Kalman filter #1).** Single readings jump around by ~4 dB.
+A small Kalman filter per laptop blends every new packet with what it believed before, trusting the
+new packet less when that laptop is noisy. Result: a steady signal that still follows real movement.
+
+**Finding the position: weighted least squares.** Each laptop gives a circle "the tag is about d
+metres from me". The circles never meet in one point (noise), so we look for the point that fits all
+circles best: the one that makes the sum of `weight * (distance to laptop - d)^2` smallest
+(Gauss-Newton, a few steps of "move to where the error shrinks"). Weights matter because a distance
+from a strong close signal is much more reliable than one from a weak far signal: 1 dB of noise is
+centimetres at 0.5 m but half a metre at 3 m. On top of that, the **3 closest laptops count fully
+and the others only 20%**, so the far, noisiest laptop can't drag the answer around.
+
+**Smoothing the position (Kalman filter #2).** The position estimate is fed into a second Kalman
+filter that knows the tag moves at a walking pace (position + speed). It removes jumps, fills short
+gaps, and gives the smooth trail on the screen.
+
+**"Calibrate room".** Hold the tag still at a known point (the centre) for 8 seconds. Each laptop
+records how noisy it is in this room (used for the weights above) and a small correction to its
+`A` (walls, tables and the laptop's angle shift it by a few dB). The laptop's own calibration curve is
+not changed; the correction is stored per room in `data/room.json`.
+
+**The checks.** "Touching" a laptop = its signal above that laptop's touch level for a moment
+(with hysteresis so it doesn't flicker). Touching the wrong loader (Joseph, AC 857) = WRONG AIRCRAFT,
+latched until the bag touches the correct loader (Alex, AC 1234) = CHECKED IN. If two neighbouring
+laptops both say the tag is more than 2.5 m away for 2 seconds, it has left the square = OUT OF ZONE.
+Only the main laptop sends the beep/flash command to the tag.
+
+**What is approximate (say this out loud).** This is Bluetooth signal strength, not UWB or GPS.
+Expect the position to be off by roughly **0.5-1.5 m**, more when someone's body is between the tag
+and a laptop. That's why the decisions use robust things: touching a laptop (very strong signal)
+and "far from two neighbours at once" (outside the square), not the exact dot on the map. In an
+airport the same idea runs with fixed receivers and RFID portals giving the exact identity;
+a production system wanting centimetre positions would add UWB anchors.

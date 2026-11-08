@@ -41,6 +41,35 @@ Press **Ctrl+C** in PowerShell to stop.
 | `.venv\Scripts\python tests\test_engine.py` | Run the logic tests |
 | `.venv\Scripts\python tests\test_tagcrypto.py` | Run the tag-security tests |
 | `.venv\Scripts\python tools\check_ble.py` | Day-of check: can the laptop hear the ESP32? (`--beep` makes it beep) |
+| `.venv\Scripts\python run.py --mode real --laptop alex --host 0.0.0.0` | **Room demo**, main laptop (see below) |
+| `.venv\Scripts\python tools\reporter.py --server http://<main-ip>:8000 --laptop joseph` | **Room demo**, every other laptop: listen and forward |
+
+### Room demo (3-4 laptops)
+
+3-4 laptops stand in a 2 m square and together estimate where the one ESP32 tag is.
+Who stands where: `docs/HARDWARE.md` section 7. How it works: `docs/PRESENTING.md` section 7.
+
+1. **Same network.** All laptops on the same Wi-Fi, or all on one phone hotspot (no internet needed).
+2. **Calibrate each laptop first** (Live ESP32 page: pick "This laptop", then Measure at 2-3 distances).
+   A laptop without calibration borrows Alex's curve and gets worse distances.
+3. **Main laptop** (Alex = the correct checkpoint "Loader 5 - AC 1234") runs the server and its own Bluetooth:
+   ```powershell
+   .venv\Scripts\python run.py --mode real --laptop alex --host 0.0.0.0
+   ```
+   It prints its address (e.g. `http://192.168.1.23:8000`) and the exact command for the others.
+   If **Windows Firewall** pops up: tick **Private networks** and press **Allow**
+   (otherwise the other laptops can't connect).
+4. **Every other laptop** only listens and forwards what it hears (no server, no browser needed):
+   ```powershell
+   .venv\Scripts\python tools\reporter.py --server http://192.168.1.23:8000 --laptop joseph
+   ```
+   Use your own name (`joseph`, `daniel`, `ocean`). It prints a line every 2 s,
+   e.g. `heard 23 packets, median -61 dBm, server ok`. To test only the network (no tag, no bleak), add `--fake`
+   and stop it again before the real demo.
+5. On the main laptop open the **Room demo** page, hold the tag still at the **centre** of the square
+   and press **Calibrate room** (8 s). Then walk the bag: Joseph's laptop = wrong loader, Alex's = correct loader.
+6. **If anything misbehaves:** turn on the **simulation** on the Room demo page. It fakes every laptop's
+   signal so the whole story still plays with zero hardware.
 
 ## 3. What you should see
 
@@ -79,6 +108,7 @@ autotrack/
     server.py               web server (FastAPI)                                                [REAL]
     real_ble.py             laptop Bluetooth: hears the ESP32, sends it beep/flash commands     [REAL]
     tagcrypto.py            rotating signed tag IDs (HMAC) and signed commands                  [REAL]
+    room.py                 Room demo: 3-4 laptops estimate where the tag is (WLS + Kalman)    [REAL logic]
   static/index.html         the web page (all three views)
   static/bags/              SecureBag sample photos (from the organisers' repo)
   firmware/autotrack_tag/   ESP32 Arduino sketch (the tag)
@@ -87,7 +117,7 @@ autotrack/
   data/tag_keys.json        secret key of the demo tag (prototype only)
   data/events.db            every feed message (SQLite; created when you run)
   securebag_cache/          real bag_compare.verify_bags() outputs + the script that made them
-  tools/                    build_replay.py, evaluate.py, check_ble.py
+  tools/                    build_replay.py, evaluate.py, check_ble.py, reporter.py (Room demo)
   tests/                    test_engine.py, test_tagcrypto.py
   results/                  metrics.md / metrics.json ("results in simulation")
   docs/HARDWARE.md          ESP32 wiring + Arduino IDE steps

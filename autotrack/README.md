@@ -9,6 +9,8 @@ and flashes when its bag reaches the wrong plane.
 
 It runs **offline on one Windows laptop**. No internet, no cloud, no database server.
 
+**Result:** 1st place of 12 teams. **Pitch deck:** [docs/AutoTrack-Pitch-Deck.pdf](docs/AutoTrack-Pitch-Deck.pdf)
+
 ---
 
 ## 1. Install (once)
